@@ -61,9 +61,10 @@ Completed:
 
 Current phase:
 
-- [ ] `P0` — Confirm implementation defaults and establish the repository foundation
+- [x] `P0 repository foundation` — Confirm the implementation defaults required before `M1` and establish the workspace
+- [ ] `M1` — Domain Contracts and Minimal Test Harness
 
-No application code should be written before the remaining `P0` decisions are understood and confirmed.
+Each remaining implementation decision must be understood and confirmed before the first milestone that depends on it. The decisions required before `M1` are confirmed; later decisions do not block the repository foundation.
 
 ---
 
@@ -85,52 +86,132 @@ No application code should be written before the remaining `P0` decisions are un
 
 ## P0 — Implementation Decisions to Confirm
 
-These are implementation choices rather than conceptual architecture changes. They will be discussed one at a time before the workspace is scaffolded.
+These are implementation choices rather than conceptual architecture changes. They will be discussed one at a time, before the first implementation step that depends on each choice.
+
+Decision timing:
+
+- `P0.1` repository and package organization — confirmed before workspace scaffolding,
+- `P0.2` supported Node.js version — confirmed before dependency installation and workspace scaffolding,
+- `P0.3` test runner — decide before `M1`,
+- `P0.4` runtime validation — decide before `M2`, the first milestone that consumes external untrusted data,
+- `P0.5` SQLite driver — decide before `M7`,
+- `P0.6` HTTP framework — decide before `M8`.
+
+Deferring a decision until its stated gate does not block earlier milestones.
 
 ### P0.1 — Repository and Package Organization
 
-Decision to make:
+**Status:** Confirmed
 
-- whether to use one npm workspace containing `apps/api`, `apps/web` and a small shared-contracts package.
+Decision:
 
-Current recommendation:
+- use one Git repository with npm workspaces,
+- create only the deployable applications initially: `apps/api` and `apps/web`,
+- keep one root `package-lock.json`,
+- provide root commands for install, build, type-check, test and lint,
+- do not create a shared contracts package before a real HTTP contract and frontend consumer exist.
 
-- use npm workspaces because both applications use TypeScript and can share root commands and selected DTO contracts without publishing packages.
+Initial structure:
 
-What must be understood before deciding:
-
-- what a workspace is,
-- what is genuinely shared,
-- and how to avoid creating unnecessary packages.
-
-### P0.2 — Supported Node.js Version
-
-Decision to make:
-
-- select and pin one supported Node.js LTS version for development and CI.
+```text
+Cross-PR Integration Risk Analyzer/
+├── apps/
+│   ├── api/
+│   └── web/
+├── docs/
+│   └── design/
+├── planning/
+│   └── implementation-plan.md
+├── package.json
+├── package-lock.json
+├── .gitignore
+└── README.md
+```
 
 Reason:
 
-- all contributors and automated checks should run the project with the same runtime expectations.
+- npm workspaces provide one installation and a consistent set of root commands for both TypeScript applications,
+- `apps` clearly identifies deployable applications,
+- an empty `shared-contracts` package would add configuration before it has a real consumer,
+- a new workspace package can be added later without restructuring the two applications.
 
-### P0.3 — Backend HTTP Framework and Runtime Validation
+Deferred decision:
+
+- before implementing `M8` and `M9`, compare a shared `packages/contracts` workspace with frontend types generated from an OpenAPI specification,
+- choose only after the actual HTTP schemas and frontend needs are known.
+
+### P0.2 — Supported Node.js Version
+
+**Status:** Confirmed
+
+Decision:
+
+- use the Node.js 24 LTS release line for development and CI,
+- require Node.js `24.15.0` or later within that major line,
+- declare root workspace compatibility as `>=24.15.0 <25.0.0`,
+- use the same current Node.js 24 patch version in local development and CI when the workspace is initialized.
+
+Reason:
+
+- Angular 22 supports Node.js `^24.15.0`,
+- Node.js 24 provides a materially longer support runway than Node.js 22 for a new project,
+- the bounded compatibility review found no verified Node.js 24 blocker in the planned Angular, npm workspace, Claude SDK or Tree-sitter usage,
+- choosing the current LTS line reduces the likelihood of a runtime-major upgrade during the MVP.
+
+Local development setup:
+
+- Node.js `24.19.0` is installed and verified as the active runtime from `C:\Program Files\nodejs`,
+- the older Node.js `22.20.0` installation remains at `C:\NodeJS` after the active installation in `PATH`,
+- no version manager is currently detected; `C:\Program Files\nodejs` is the authoritative local installation for this project,
+- do not remove an existing Node.js installation without a separate cleanup decision.
+
+Verification to defer until the relevant packages are introduced:
+
+- run a small Windows installation smoke check for the exact Tree-sitter Node binding and TypeScript/C# grammar packages,
+- treat a failed native build as a dependency compatibility finding to investigate, not as permission to silently change the supported Node.js line.
+
+### P0.3 — Test Runner
+
+**Status:** Confirmed
+
+Decision:
+
+- use Vitest for backend tests and the Angular testing setup,
+- use `*.spec.ts` as the repository-wide test-file naming convention,
+- run Angular tests through the Angular CLI and backend tests directly through Vitest,
+- keep TypeScript type-checking as a separate command,
+- begin backend testing without a `vitest.config.ts` file and introduce configuration only when a concrete need appears.
+
+Reason:
+
+- one testing vocabulary reduces unnecessary context switching across the two applications,
+- Vitest is the default test runner used by the Angular CLI testing setup,
+- Vitest's default Node.js environment and test-file discovery are sufficient for the minimal backend harness,
+- deferring speculative configuration keeps `M1` proportionate to the MVP.
+
+Initial implementation boundary:
+
+- configure only what is required to run one small initial scenario,
+- do not add a coverage target, broad mock system, large fixture library or extensive browser E2E suite,
+- add further test configuration alongside relevant implementation needs rather than in advance.
+
+### P0.4 — Runtime Validation
 
 Decision to make:
 
-- select the small HTTP framework used to expose the backend API,
-- select one primary runtime-schema validation approach.
+- select one primary runtime-schema validation approach before the application consumes external untrusted data.
 
 Candidates to compare:
 
-- Fastify, Express or NestJS for HTTP,
 - Zod or JSON Schema/TypeBox for runtime validation.
 
 Current direction:
 
-- prefer a small framework and one understandable validation approach;
-- do not introduce multiple schema systems without a concrete reason.
+- prefer one understandable validation approach,
+- do not introduce multiple schema systems without a concrete reason,
+- consider whether the approach can support practical OpenAPI specification generation later, without selecting the contract-sharing strategy prematurely.
 
-### P0.4 — SQLite Driver
+### P0.5 — SQLite Driver
 
 Decision to make:
 
@@ -146,27 +227,39 @@ Current direction:
 - prefer a mature, simple driver behind an `AnalysisResultCache` interface;
 - do not introduce an ORM for the initial cache tables.
 
-### P0.5 — Test Runner
+### P0.6 — Backend HTTP Framework
 
 Decision to make:
 
-- confirm Vitest for backend tests as well as the Angular testing setup.
+- select the small HTTP framework used to expose the backend API.
 
-Current recommendation:
+Candidates to compare:
 
-- use Vitest to keep one testing vocabulary across the repository while retaining a separate TypeScript type-check command.
+- Fastify,
+- Express,
+- NestJS.
 
-### P0 Exit Criteria
+Current direction:
 
-`P0` is complete when:
+- prefer a small framework proportionate to the MVP orchestration API,
+- consider integration with the validation approach selected in `P0.4` and practical OpenAPI specification generation,
+- do not select the later contract-sharing strategy prematurely.
 
-- [ ] the five implementation choices above are understood and recorded,
-- [ ] the project directory is initialized as a Git repository,
-- [ ] the approved design documents have a baseline commit,
-- [ ] the minimal workspace structure exists,
-- [ ] install, type-check, test and lint commands can run,
-- [ ] a concise project `CLAUDE.md` documents the locked boundaries and commands,
-- [ ] no feature implementation has been added.
+### P0 Repository-Foundation Exit Criteria
+
+The repository-foundation part of `P0` is complete when:
+
+- [x] repository and package organization is understood and recorded,
+- [x] the supported Node.js version is understood and recorded,
+- [x] the test runner needed by `M1` is understood and recorded,
+- [x] the project directory is initialized as a Git repository,
+- [x] the approved design documents have a baseline commit,
+- [x] the minimal workspace structure exists,
+- [x] install, build, type-check, test and lint commands can run,
+- [x] a concise project `CLAUDE.md` documents the locked boundaries and commands,
+- [x] no feature implementation has been added.
+
+Runtime validation, the SQLite driver and the HTTP framework remain tracked `P0` implementation decisions, but they are confirmed at their later milestone gates and do not block `M1`.
 
 Suggested commit:
 
@@ -178,19 +271,19 @@ chore: initialize project workspace
 
 # Implementation Milestones
 
-## M1 — Domain Contracts and Test Foundation
+## M1 — Domain Contracts and Minimal Test Harness
 
 ### 1. What We Implement
 
 Define the core TypeScript data contracts for normalized pull requests, changed files, evidence, Candidate Pairs, Context Bundles, screening results, detailed findings and coverage limitations.
 
-Add the basic testing structure, small test-data builders and the first controlled fixture scenario.
+Configure only the minimal test runner and add one small initial test scenario. Introduce a test-data builder or fixture only if that first scenario becomes clearer or less repetitive with it.
 
 ### 2. Why We Need It
 
 Every later stage exchanges these objects. Defining them first prevents GitHub response shapes, Tree-sitter details or Claude responses from becoming the internal domain model.
 
-The test foundation gives every following milestone a repeatable verification method.
+The minimal test harness provides a repeatable verification method without designing a broad test system before application behaviour exists.
 
 ### 3. Design Decisions Implemented
 
@@ -202,8 +295,9 @@ The test foundation gives every following milestone a repeatable verification me
 
 - backend domain types,
 - shared API DTOs only where the frontend genuinely needs them,
-- test builders,
-- small scenario fixtures.
+- minimal test-runner configuration,
+- one small initial test scenario,
+- a test-data builder or fixture only when the initial scenario benefits from it.
 
 ### 5. Verification
 
@@ -214,7 +308,7 @@ The test foundation gives every following milestone a repeatable verification me
 ### 6. Commit Point
 
 ```text
-feat: add analysis domain contracts and test foundation
+feat: add analysis domain contracts and minimal test harness
 ```
 
 ---
@@ -489,6 +583,13 @@ feat: cache AI analysis results in SQLite
 
 Expose the complete workflow through HTTP endpoints for repository/branch selection, analysis execution, status and findings.
 
+Before implementation begins, decide how the Angular application will consume the public HTTP contracts:
+
+- a shared `packages/contracts` workspace, or
+- frontend types generated from an OpenAPI specification.
+
+Base the decision on the HTTP framework selected in `P0.6`, the validation approach selected in `P0.4` and the actual request/response schemas. Do not expose backend domain types directly merely to avoid defining explicit API contracts.
+
 ### 2. Why We Need It
 
 The Angular frontend needs one stable API that orchestrates the already-tested components.
@@ -604,17 +705,29 @@ docs: complete reproducible MVP demonstration
 
 ## Testing Strategy Across the Milestones
 
-Testing will use the smallest useful form of controlled data:
+Tests are added alongside the implementation of the relevant behaviour. They are not designed in bulk before the application code exists.
+
+Automated tests prioritize critical deterministic behaviour and meaningful regression risk. In particular, they protect:
+
+- GitHub approval and eligibility rules,
+- all five approved Candidate Discovery evidence rules,
+- focused-context selection, configured bounds and coverage limitations,
+- screening and detailed-analysis response validation and escalation behaviour,
+- cache hits and invalidation behaviour.
+
+Testing uses the smallest useful form of controlled data:
 
 - inline objects for small pure unit tests,
-- builders for repeated PR and review metadata,
-- `.diff`, `.ts` and `.cs` fixtures where real formatting matters,
-- stored provider JSON for GitHub adapter tests,
-- fake adapters for normal end-to-end application tests,
-- a small controlled GitHub repository for occasional opt-in integration checks,
-- and a small number of opt-in Claude provider checks outside the normal test suite.
+- a builder only when repeated setup makes a relevant scenario harder to read,
+- small `.diff`, `.ts` and `.cs` fixtures only when real formatting matters,
+- small stored provider responses only when the GitHub response shape matters,
+- focused fakes at external boundaries for a small number of integration or application-flow tests.
 
-Fixtures are test inputs, not a second implementation of the application. They should remain small, readable, synthetic and free of private company code or secrets.
+Selected Angular component and API-client tests remain part of the MVP. A small number of opt-in checks may exercise the real GitHub and Claude providers outside the normal test suite. Manual testing is retained for the real GitHub, Claude and Angular workflow, including a manual browser walkthrough.
+
+The MVP does not require a coverage percentage or a test for every function. It does not introduce an extensive browser E2E suite, a broad mock system or a large fixture library.
+
+Fixtures are test inputs, not a second implementation of the application. When needed, they remain small, readable, synthetic and free of private company code or secrets.
 
 ---
 
@@ -638,6 +751,6 @@ Implementation details should remain implementation details unless they material
 
 ## Immediate Next Step
 
-The next discussion is `P0.1 — Repository and Package Organization`.
+Begin `M1 — Domain Contracts and Minimal Test Harness` by defining the backend domain contracts that later deterministic and AI-assisted stages exchange.
 
-No command or code change is required from the project owner before that discussion. The decision will be explained with a concrete repository tree and the alternatives before the workspace is created.
+Add one small backend test scenario alongside the first behaviour that benefits from executable verification. Do not design fixtures or test infrastructure in advance. Runtime validation, the SQLite driver and the HTTP framework remain deferred until their stated milestone gates.
