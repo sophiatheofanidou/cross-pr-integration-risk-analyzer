@@ -385,8 +385,8 @@ Candidate Pair
 ├── Pull Request A
 ├── Pull Request B
 └── Evidence[]
-    ├── Type
-    ├── Technical Resource / Symbol
+    ├── Evidence Rule ID
+    ├── Technical Resource
     ├── PR A Location
     └── PR B Location
 ```
@@ -394,10 +394,10 @@ Candidate Pair
 Example:
 
 ```text
-Type:
+Evidence Rule ID:
 MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR
 
-Symbol:
+Technical Resource:
 processPayment
 
 PR A:

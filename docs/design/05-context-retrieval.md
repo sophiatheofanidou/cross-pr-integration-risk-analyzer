@@ -109,7 +109,7 @@ Useful information includes:
 
 ## Context Derived from Candidate Evidence
 
-The evidence type determines what additional context is useful.
+The evidence rule ID determines what additional context is useful.
 
 ### Same Changed File
 
@@ -176,7 +176,7 @@ A full file may be included when it is small and directly relevant, but full-fil
 
 ---
 
-## Retrieval Rationale
+## Retrieval Reasons
 
 Every additional repository snippet should have a clear reason for being included.
 

@@ -36,6 +36,7 @@ npm run lint
 ## Working Agreement
 
 - Work one milestone or bounded task at a time.
+- Use the canonical MVP terminology defined in `docs/design/07-mvp-specification.md`.
 - Preserve existing uncommitted changes and inspect the Git diff before edits.
 - Keep code, identifiers, filenames, commands, commit messages and repository documentation in English.
 - Add tests alongside relevant behaviour, prioritizing deterministic rules and regression risk.

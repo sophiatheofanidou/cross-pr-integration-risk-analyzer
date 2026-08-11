@@ -25,7 +25,7 @@ AI Risk Analysis receives:
 - Candidate Pair
 - Candidate Discovery Evidence[]
 - focused Context Bundle
-- explicit Context Coverage Limitations, when present
+- explicit Coverage Limitations, when present
 - relevant pull request metadata
 
 The AI does not independently retrieve arbitrary repository content during the initial design.
@@ -379,22 +379,28 @@ These mechanisms complement each other.
 
 # Output
 
-Detailed AI analysis produces a structured finding.
+Detailed AI analysis produces a structured Detailed Analysis Result.
 
 Conceptually:
 
 ```text
-Risk Finding
+Detailed Analysis Result
 ├── Pull Request A
 ├── Pull Request B
 ├── Risk Status
-├── Explanation
-├── Supporting Evidence[]
-├── Inferred Assumption
-├── Confidence
-├── Severity
-├── Recommended Reviewer Check
-└── Analysis Limitations[]
+├── Coverage Limitations[]
+└── Outcome
+    ├── RISK_IDENTIFIED
+    │   └── Risk Finding
+    │       ├── Explanation
+    │       ├── Supporting Evidence[]
+    │       ├── Inferred Assumption
+    │       ├── Confidence
+    │       ├── Severity
+    │       └── Recommended Reviewer Check
+    └── NO_RISK_IDENTIFIED
+        ├── Explanation
+        └── Supporting Evidence[]
 ```
 
 Example reviewer recommendation:
@@ -405,11 +411,11 @@ Verify whether the new checkout flow should be updated to use the revised paymen
 
 ---
 
-## No-Risk Results
+## No Risk Identified
 
-Not every Candidate Pair should produce a risk finding.
+Not every Candidate Pair should produce a Risk Finding.
 
-A pair may be dismissed because:
+Detailed Analysis may return `NO_RISK_IDENTIFIED` because:
 
 - the shared symbol is coincidental,
 - the changed code is unrelated,

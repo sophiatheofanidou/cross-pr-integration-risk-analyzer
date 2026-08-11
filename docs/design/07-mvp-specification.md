@@ -67,6 +67,7 @@ The detailed workflow is:
 |---|---|
 | Frontend | Angular |
 | Backend | Node.js + TypeScript |
+| Test Runner | Vitest |
 | Source Control | GitHub |
 | Source-Control API | GitHub REST API |
 | Structural Parsing | Tree-sitter |
@@ -241,7 +242,7 @@ Detailed output includes:
 - inferred assumption,
 - confidence,
 - severity,
-- recommended reviewer action.
+- recommended reviewer check.
 
 Specific model names remain configuration choices.
 
@@ -276,7 +277,7 @@ The Angular interface should allow the user to:
 - view identified cross-PR findings,
 - inspect the evidence connecting each pair,
 - inspect severity and confidence,
-- inspect the recommended reviewer action.
+- inspect the recommended reviewer check.
 
 Filtering by reviewer, author or responsibility may be included if implementation time permits, but it is not required for the first complete workflow.
 
@@ -325,6 +326,53 @@ Additional savings come from:
 - reusing structural-analysis results.
 
 The MVP does not claim a fixed percentage of candidate reduction or a fixed per-repository AI cost.
+
+---
+
+# Canonical MVP Terminology
+
+The following terms are used consistently across the MVP design and implementation:
+
+| Term | Canonical meaning | MVP example |
+|---|---|---|
+| Candidate Discovery Evidence Rule | A deterministic check that can establish a meaningful technical relationship between two pull requests. | Both pull requests modify the same file. |
+| Evidence Rule ID | The stable identifier of the evidence rule that matched. | `SAME_CHANGED_FILE` |
+| Candidate Evidence | The structured record produced when an evidence rule matches. | An Evidence Rule ID, Technical Resource and locations in both pull requests. |
+| Technical Resource | The file path, identifier or structural symbol connected by Candidate Evidence. | `processPayment` |
+| File Change Type | How a changed file was affected. | `ADDED`, `MODIFIED`, `DELETED` or `RENAMED` |
+| Retrieval Reason | Why a repository context snippet was included in a Context Bundle. | Contains the method definition modified by PR A. |
+| Coverage Limitation | Relevant analysis coverage that is missing, unavailable or unsupported. It may be file-specific or apply to the wider analysis context. | An oversized relevant file was excluded from structural analysis. |
+| Detailed Analysis Result | The structured outcome of Detailed Analysis with one of two Risk Status values. | `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED` |
+| Risk Finding | The finding details present only when a Detailed Analysis Result has the `RISK_IDENTIFIED` status. | Explanation, supporting evidence, inferred assumption, confidence, severity and Recommended Reviewer Check. |
+| Recommended Reviewer Check | What the human reviewer should verify. It does not perform or prescribe an automatic pull-request action. | Verify whether PR B still relies on the previous method contract. |
+
+The complete allowed set of five Evidence Rule IDs is defined in **Required MVP Evidence Rules**.
+
+Example Candidate Evidence:
+
+```text
+Evidence Rule ID:
+MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR
+
+Technical Resource:
+processPayment
+
+PR A Location:
+src/payments/payment.service.ts
+
+PR B Location:
+src/checkout/checkout.service.ts
+```
+
+Detailed Analysis Result relationship:
+
+```text
+Detailed Analysis Result
+├── RISK_IDENTIFIED
+│   └── Risk Finding
+└── NO_RISK_IDENTIFIED
+    └── Explanation
+```
 
 ---
 

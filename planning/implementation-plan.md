@@ -62,9 +62,9 @@ Completed:
 Current phase:
 
 - [x] `P0 repository foundation` — Confirm the implementation defaults required before `M1` and establish the workspace
-- [ ] `M1` — Domain Contracts and Minimal Test Harness
+- [x] `M1` — Domain Contracts and Minimal Test Harness
 
-Each remaining implementation decision must be understood and confirmed before the first milestone that depends on it. The decisions required before `M1` are confirmed; later decisions do not block the repository foundation.
+Each remaining implementation decision must be understood and confirmed before the first milestone that depends on it. `M1` is complete. Runtime validation from `P0.4` is the next decision gate and must be confirmed before `M2` consumes external untrusted data.
 
 ---
 
@@ -275,7 +275,7 @@ chore: initialize project workspace
 
 ### 1. What We Implement
 
-Define the core TypeScript data contracts for normalized pull requests, changed files, evidence, Candidate Pairs, Context Bundles, screening results, detailed findings and coverage limitations.
+Define the core TypeScript data contracts for normalized pull requests, changed files, Candidate Evidence, Candidate Pairs, Context Bundles, screening results, Detailed Analysis Results and Coverage Limitations.
 
 Configure only the minimal test runner and add one small initial test scenario. Introduce a test-data builder or fixture only if that first scenario becomes clearer or less repetitive with it.
 
@@ -751,6 +751,6 @@ Implementation details should remain implementation details unless they material
 
 ## Immediate Next Step
 
-Begin `M1 — Domain Contracts and Minimal Test Harness` by defining the backend domain contracts that later deterministic and AI-assisted stages exchange.
+Confirm `P0.4 — Runtime Validation` before beginning `M2 — GitHub Integration and Pull Request Eligibility`.
 
-Add one small backend test scenario alongside the first behaviour that benefits from executable verification. Do not design fixtures or test infrastructure in advance. Runtime validation, the SQLite driver and the HTTP framework remain deferred until their stated milestone gates.
+The decision should select one proportionate runtime-schema validation approach for external GitHub data while considering later AI-response validation and practical OpenAPI generation. The SQLite driver and HTTP framework remain deferred until their stated milestone gates.
