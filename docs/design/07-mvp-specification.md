@@ -68,6 +68,7 @@ The detailed workflow is:
 | Frontend | Angular |
 | Backend | Node.js + TypeScript |
 | Test Runner | Vitest |
+| Runtime Validation | Zod |
 | Source Control | GitHub |
 | Source-Control API | GitHub REST API |
 | Structural Parsing | Tree-sitter |

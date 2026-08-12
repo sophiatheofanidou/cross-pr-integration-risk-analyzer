@@ -13,6 +13,7 @@ Read `planning/implementation-plan.md` and the approved documents in `docs/desig
 - Use bounded Tree-sitter analysis for TypeScript and C#.
 - Retrieve focused context only; never retrieve repository-wide context.
 - Preserve explicit partial-analysis and coverage limitations.
+- Use Zod at external structured-data boundaries. Keep provider schemas adapter-local and separate from the provider-neutral domain contracts; do not revalidate every internal pipeline stage.
 - Do not add an Interaction Score, automatic PR decisions, analyzed-PR combination builds/tests, an ORM or a dependency-injection container without a concrete approved need.
 
 ## Workspace

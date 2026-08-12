@@ -64,6 +64,8 @@ Its responsibilities include retrieving and normalizing:
 
 The component also supports bounded, on-demand retrieval of selected repository file versions when Candidate Discovery or Repository Context Retrieval requires more source context than the available diff provides.
 
+For pull-request change reconstruction, the selected before/after versions represent the comparison base for the changes introduced by the pull request and the pull request head. Current-target versus simulated-merge analysis is a separate concern and is not implied by this retrieval boundary.
+
 Repository content is identified by an immutable repository revision and normalized before it is provided to the rest of the workflow. Content already retrieved during an analysis run should be reused where practical.
 
 The rest of the analysis workflow should not depend directly on provider-specific API responses.

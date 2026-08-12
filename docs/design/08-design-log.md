@@ -261,6 +261,8 @@ When Candidate Discovery or Repository Context Retrieval requires more source co
 
 For bounded supported text files, before-and-after versions may be used to construct a local diff when the provider-supplied patch is unavailable or insufficient.
 
+The before version is the immutable comparison base used to identify the changes introduced by the pull request; the after version is the immutable pull-request head. This decision does not define the current target-branch tip as the before version and does not introduce simulated-merge analysis.
+
 Retrieved contents are reused within the analysis run.
 
 Binary, unsupported, unavailable or oversized content is handled gracefully and produces explicit coverage information when its exclusion may affect the result.
@@ -274,6 +276,34 @@ Provider-supplied patches may not contain enough syntactic or enclosing context 
 Targeted source retrieval supports accurate deterministic analysis without sending the complete repository to the AI or introducing repository-wide indexing.
 
 Keeping retrieval behind the Source Control Integration preserves the ability to support additional Git platforms through provider-specific adapters.
+
+---
+
+## ADR-016 — Zod for External Runtime Validation
+
+**Status:** Accepted
+
+### Decision
+
+Zod is the single primary runtime-schema validation approach for the MVP.
+
+Runtime validation is applied where external structured data enters the application. `M2` validates focused subsets of GitHub REST responses inside the GitHub adapter before normalization. `M6` applies the same approach to AI-generated screening and detailed-analysis output before constructing the corresponding domain results.
+
+Boundary types are inferred from Zod schemas where practical and remain local to their provider adapters. The provider-neutral domain contracts remain hand-written and separate from provider response shapes.
+
+Runtime schemas validate data shape, primitive types, required fields, nullability and allowed values. Provider-specific normalization and application business rules remain separate responsibilities.
+
+Malformed external payloads are rejected explicitly and are not treated as valid domain data, dismissals or no-risk results. Recovery behaviour is decided within the milestone that implements the relevant provider integration.
+
+Internal objects are not revalidated between every pipeline stage, and a second schema system is not introduced without a concrete approved need.
+
+### Reason
+
+The MVP needs one understandable validation approach for nested GitHub data in `M2` and structured Claude output in `M6`. Zod provides TypeScript-oriented schema composition, inferred boundary types, structured validation errors and direct support for discriminated unions without requiring the application to build and maintain handwritten validation infrastructure.
+
+Zod can convert schemas to JSON Schema, including an OpenAPI-compatible target. This preserves a practical path toward later OpenAPI tooling without deciding the `M8` HTTP framework, API surface or contract-sharing strategy now.
+
+JSON Schema with TypeBox and handwritten type guards remain viable techniques, but neither offers a proportionate advantage for these MVP boundaries. TypeBox would prioritize a JSON Schema-oriented authoring model before OpenAPI is a confirmed requirement, while handwritten guards would require repetitive nested validation and custom error reporting across both provider boundaries.
 
 ---
 

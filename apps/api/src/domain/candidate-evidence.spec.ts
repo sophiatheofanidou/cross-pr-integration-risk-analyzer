@@ -14,6 +14,8 @@ describe('CandidatePair evidence', () => {
       id: 'pr-a',
       sourceBranch: 'feature/payment-contract',
       targetBranch: 'main',
+      headRevision: 'a1b2c3d',
+      changeBaseRevision: 'merge-base-1',
       changedFiles: [
         { path: 'src/payments/payment.service.ts', changeType: 'MODIFIED' },
       ],
@@ -23,6 +25,8 @@ describe('CandidatePair evidence', () => {
       id: 'pr-b',
       sourceBranch: 'feature/checkout-flow',
       targetBranch: 'main',
+      headRevision: 'e4f5g6h',
+      changeBaseRevision: 'merge-base-2',
       changedFiles: [
         { path: 'src/checkout/checkout.service.ts', changeType: 'MODIFIED' },
       ],

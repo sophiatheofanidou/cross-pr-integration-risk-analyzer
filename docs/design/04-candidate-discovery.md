@@ -43,6 +43,20 @@ When structural analysis requires complete syntactic context, Candidate Discover
 
 For a bounded supported text file, the implementation may retrieve the file versions before and after the pull-request change and construct a complete local diff when the provider-supplied patch is unavailable or insufficient.
 
+In this flow, `before` means the immutable comparison-base revision used to identify what the pull request introduces, and `after` means the pull request's immutable head revision. It does not mean comparing the current target-branch tip directly with the feature-branch tip, and it does not simulate the repository state after a merge.
+
+```mermaid
+flowchart TD
+    A[Changed-file metadata] --> B{Provider patch available?}
+    B -->|Yes| C{Patch sufficient for the required operation?}
+    C -->|Yes| D[Use provider patch]
+    B -->|No| E[Request selected before and after file versions]
+    C -->|No| E
+    E --> F{Both versions available and safely supported?}
+    F -->|Yes| G[Construct a local diff]
+    F -->|No| H[Continue supported rules and preserve a coverage limitation]
+```
+
 Retrieved file contents and locally constructed diffs are deterministic analysis inputs. They are not AI-generated context.
 
 Content already retrieved during the current analysis run should be reused where practical.

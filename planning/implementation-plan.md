@@ -63,8 +63,10 @@ Current phase:
 
 - [x] `P0 repository foundation` — Confirm the implementation defaults required before `M1` and establish the workspace
 - [x] `M1` — Domain Contracts and Minimal Test Harness
+- [x] `P0.4` — Runtime Validation
+- [x] `M2` — GitHub Integration and Pull Request Eligibility
 
-Each remaining implementation decision must be understood and confirmed before the first milestone that depends on it. `M1` is complete. Runtime validation from `P0.4` is the next decision gate and must be confirmed before `M2` consumes external untrusted data.
+Each remaining implementation decision must be understood and confirmed before the first milestone that depends on it. `M2 — GitHub Integration and Pull Request Eligibility` is complete. `M3 — Basic Candidate Discovery` is the next implementation milestone.
 
 ---
 
@@ -75,6 +77,7 @@ Each remaining implementation decision must be understood and confirmed before t
 | Frontend | Angular | Matches professional experience and the structured dashboard workflow |
 | Backend runtime | Node.js | Suitable for API orchestration and asynchronous I/O |
 | Backend language | TypeScript | Strong domain contracts and a shared language across frontend and backend |
+| Runtime validation | Zod | One TypeScript-oriented schema approach for focused external GitHub and Claude data boundaries |
 | Source-control provider | GitHub REST API | Delivers a real MVP while the core remains provider-neutral |
 | Structural analysis | Tree-sitter | Deterministic structural parsing without AI cost |
 | Structural languages | TypeScript and C# | Bounded MVP coverage with a generic fallback |
@@ -93,7 +96,7 @@ Decision timing:
 - `P0.1` repository and package organization — confirmed before workspace scaffolding,
 - `P0.2` supported Node.js version — confirmed before dependency installation and workspace scaffolding,
 - `P0.3` test runner — decide before `M1`,
-- `P0.4` runtime validation — decide before `M2`, the first milestone that consumes external untrusted data,
+- `P0.4` runtime validation — confirmed before `M2`, the first milestone that consumes external untrusted data,
 - `P0.5` SQLite driver — decide before `M7`,
 - `P0.6` HTTP framework — decide before `M8`.
 
@@ -197,19 +200,26 @@ Initial implementation boundary:
 
 ### P0.4 — Runtime Validation
 
-Decision to make:
+Status:
 
-- select one primary runtime-schema validation approach before the application consumes external untrusted data.
+- confirmed.
 
-Candidates to compare:
+Decision:
 
-- Zod or JSON Schema/TypeBox for runtime validation.
+- use Zod as the single primary runtime-schema validation approach for the MVP,
+- validate focused external structured data at the GitHub adapter boundary in `M2` and the Claude structured-output boundary in `M6`,
+- infer adapter-local boundary types from the schemas where practical while keeping the provider-neutral domain contracts hand-written and separate,
+- limit schemas to data-shape concerns; keep provider normalization and application business rules in their own components,
+- reject malformed external payloads explicitly rather than allowing unchecked assertions to introduce them into the domain model,
+- decide milestone-specific recovery behaviour when the relevant GitHub or Claude integration is designed,
+- do not revalidate every internal pipeline stage or introduce a second schema system without a concrete approved need.
 
-Current direction:
+Reason:
 
-- prefer one understandable validation approach,
-- do not introduce multiple schema systems without a concrete reason,
-- consider whether the approach can support practical OpenAPI specification generation later, without selecting the contract-sharing strategy prematurely.
+- Zod provides one TypeScript-oriented schema and parsing model for the two external-data boundaries required by the MVP,
+- schema-derived boundary types reduce drift between runtime validation and adapter-local TypeScript types,
+- its structured errors, nested-schema composition and discriminated-union support are proportionate for GitHub and Claude payloads,
+- its JSON Schema conversion preserves a practical path toward later OpenAPI tooling without selecting the `M8` HTTP framework or contract-sharing strategy prematurely.
 
 ### P0.5 — SQLite Driver
 
@@ -314,6 +324,8 @@ feat: add analysis domain contracts and minimal test harness
 ---
 
 ## M2 — GitHub Integration and Pull Request Eligibility
+
+**Status:** Complete
 
 ### 1. What We Implement
 
@@ -751,6 +763,6 @@ Implementation details should remain implementation details unless they material
 
 ## Immediate Next Step
 
-Confirm `P0.4 — Runtime Validation` before beginning `M2 — GitHub Integration and Pull Request Eligibility`.
+Review and plan the first bounded implementation slice of `M3 — Basic Candidate Discovery`.
 
-The decision should select one proportionate runtime-schema validation approach for external GitHub data while considering later AI-response validation and practical OpenAPI generation. The SQLite driver and HTTP framework remain deferred until their stated milestone gates.
+Begin with unique same-target-branch PR-pair generation and the first approved deterministic evidence rules. Preserve provider patches as the primary change representation and use selected-file fallback only when a rule requires it. Do not introduce Tree-sitter structural analysis before `M4`. The SQLite driver and HTTP framework remain deferred until their stated milestone gates.
