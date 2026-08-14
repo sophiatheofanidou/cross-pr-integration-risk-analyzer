@@ -2,48 +2,24 @@
 
 ## Purpose
 
-This document is the execution guide for the portfolio MVP.
+This plan implements the smallest credible end-to-end MVP before adding cost, scale or coverage optimizations.
 
-The approved design documents in `docs/design/` remain the source of truth for product and architecture decisions. This plan does not redesign the system. It records:
-
-- the order in which the system will be implemented,
-- why each implementation step is needed,
-- which decisions must be made before a step begins,
-- which files or components are expected to change,
-- how each step will be verified,
-- and when a commit represents a useful checkpoint.
-
-This is a living implementation document. It should be updated when a milestone is completed or when an implementation choice materially changes the execution plan.
+The design documents in `docs/design/` define product responsibilities. This plan records implementation order, verification and coherent commit points.
 
 ---
 
-## How We Will Work
+## Working Method
 
-The project will be implemented one small milestone at a time.
+For each milestone:
 
-Before each milestone:
+1. confirm the exact scope and scenarios,
+2. produce a file-level implementation plan,
+3. implement only the approved vertical slice,
+4. add focused tests with the behaviour,
+5. run test, type-check and lint verification,
+6. review the complete diff before committing.
 
-1. Read only the design documents relevant to that milestone.
-2. Explain the technical concepts and proposed choices in plain language.
-3. Resolve decisions that materially affect the implementation.
-4. Produce a file-level plan before changing application code.
-
-During each milestone:
-
-1. Implement only the approved scope.
-2. Add tests together with the implementation.
-3. Keep external services behind replaceable interfaces.
-4. Avoid unrelated refactoring and optional features.
-
-After each milestone:
-
-1. Run the relevant tests, type-check and lint checks.
-2. Review the complete diff.
-3. Explain what changed and why.
-4. Record known limitations.
-5. Commit only when the milestone is coherent and verifiable.
-
-Claude Code may assist with exploration, planning, implementation and review, but generated code is not accepted without diff review and verification.
+Optional infrastructure is introduced only when the milestone uses it.
 
 ---
 
@@ -51,271 +27,52 @@ Claude Code may assist with exploration, planning, implementation and review, bu
 
 Completed:
 
-- [x] Project vision and problem definition
-- [x] Conceptual architecture
-- [x] Candidate Discovery design
-- [x] Repository Context Retrieval design
-- [x] Tiered AI Risk Analysis design
-- [x] MVP scope and design log
-- [x] Bounded on-demand source-content retrieval clarification
+- [x] project vision and initial design,
+- [x] repository foundation,
+- [x] `M1` initial domain contracts and test harness,
+- [x] `M2` GitHub integration and pull-request eligibility.
 
-Current phase:
+Approved transition:
 
-- [x] `P0 repository foundation` — Confirm the implementation defaults required before `M1` and establish the workspace
-- [x] `M1` — Domain Contracts and Minimal Test Harness
-- [x] `P0.4` — Runtime Validation
-- [x] `M2` — GitHub Integration and Pull Request Eligibility
+- the simplified MVP design and execution plan are approved by the project owner,
+- this documentation commit records that decision,
+- implementation resumes with the revised `M3` after the design commit.
 
-Each remaining implementation decision must be understood and confirmed before the first milestone that depends on it. `M2 — GitHub Integration and Pull Request Eligibility` is complete. `M3 — Basic Candidate Discovery` is the next implementation milestone.
+The existing M1 domain contracts intentionally reflect the previous design and will be simplified as part of M3 before new Candidate Discovery behaviour is added.
 
 ---
 
-## Confirmed Technology Decisions
+## Confirmed MVP Technology
 
-| Area | Confirmed MVP decision | Reason |
-|---|---|---|
-| Frontend | Angular | Matches professional experience and the structured dashboard workflow |
-| Backend runtime | Node.js | Suitable for API orchestration and asynchronous I/O |
-| Backend language | TypeScript | Strong domain contracts and a shared language across frontend and backend |
-| Runtime validation | Zod | One TypeScript-oriented schema approach for focused external GitHub and Claude data boundaries |
-| Source-control provider | GitHub REST API | Delivers a real MVP while the core remains provider-neutral |
-| Structural analysis | Tree-sitter | Deterministic structural parsing without AI cost |
-| Structural languages | TypeScript and C# | Bounded MVP coverage with a generic fallback |
-| AI provider | Claude | Selected provider for screening and detailed analysis |
-| Persistent result cache | SQLite | Durable local cache without separate database infrastructure |
-| UI/API relationship | Separate Angular frontend and backend API | Keeps presentation separate from analysis responsibilities |
+| Area | Decision |
+|---|---|
+| Frontend | Angular |
+| Backend | Node.js + TypeScript |
+| Test Runner | Vitest |
+| Runtime Validation | Zod at GitHub and Claude boundaries |
+| Source Control | GitHub REST API |
+| Structural Parser | Tree-sitter |
+| Analyzed Source | TypeScript `.ts` files |
+| AI Provider | Claude |
+| AI Strategy | One structured assessment per Candidate Pair with sufficient focused input |
+| API Style | One synchronous analysis operation |
+| Persistent Cache | Deferred |
 
----
-
-## P0 — Implementation Decisions to Confirm
-
-These are implementation choices rather than conceptual architecture changes. They will be discussed one at a time, before the first implementation step that depends on each choice.
-
-Decision timing:
-
-- `P0.1` repository and package organization — confirmed before workspace scaffolding,
-- `P0.2` supported Node.js version — confirmed before dependency installation and workspace scaffolding,
-- `P0.3` test runner — decide before `M1`,
-- `P0.4` runtime validation — confirmed before `M2`, the first milestone that consumes external untrusted data,
-- `P0.5` SQLite driver — decide before `M7`,
-- `P0.6` HTTP framework — decide before `M8`.
-
-Deferring a decision until its stated gate does not block earlier milestones.
-
-### P0.1 — Repository and Package Organization
-
-**Status:** Confirmed
-
-Decision:
-
-- use one Git repository with npm workspaces,
-- create only the deployable applications initially: `apps/api` and `apps/web`,
-- keep one root `package-lock.json`,
-- provide root commands for install, build, type-check, test and lint,
-- do not create a shared contracts package before a real HTTP contract and frontend consumer exist.
-
-Initial structure:
-
-```text
-Cross-PR Integration Risk Analyzer/
-├── apps/
-│   ├── api/
-│   └── web/
-├── docs/
-│   └── design/
-├── planning/
-│   └── implementation-plan.md
-├── package.json
-├── package-lock.json
-├── .gitignore
-└── README.md
-```
-
-Reason:
-
-- npm workspaces provide one installation and a consistent set of root commands for both TypeScript applications,
-- `apps` clearly identifies deployable applications,
-- an empty `shared-contracts` package would add configuration before it has a real consumer,
-- a new workspace package can be added later without restructuring the two applications.
-
-Deferred decision:
-
-- before implementing `M8` and `M9`, compare a shared `packages/contracts` workspace with frontend types generated from an OpenAPI specification,
-- choose only after the actual HTTP schemas and frontend needs are known.
-
-### P0.2 — Supported Node.js Version
-
-**Status:** Confirmed
-
-Decision:
-
-- use the Node.js 24 LTS release line for development and CI,
-- require Node.js `24.15.0` or later within that major line,
-- declare root workspace compatibility as `>=24.15.0 <25.0.0`,
-- use the same current Node.js 24 patch version in local development and CI when the workspace is initialized.
-
-Reason:
-
-- Angular 22 supports Node.js `^24.15.0`,
-- Node.js 24 provides a materially longer support runway than Node.js 22 for a new project,
-- the bounded compatibility review found no verified Node.js 24 blocker in the planned Angular, npm workspace, Claude SDK or Tree-sitter usage,
-- choosing the current LTS line reduces the likelihood of a runtime-major upgrade during the MVP.
-
-Local development setup:
-
-- Node.js `24.19.0` is installed and verified as the active runtime from `C:\Program Files\nodejs`,
-- the older Node.js `22.20.0` installation remains at `C:\NodeJS` after the active installation in `PATH`,
-- no version manager is currently detected; `C:\Program Files\nodejs` is the authoritative local installation for this project,
-- do not remove an existing Node.js installation without a separate cleanup decision.
-
-Verification to defer until the relevant packages are introduced:
-
-- run a small Windows installation smoke check for the exact Tree-sitter Node binding and TypeScript/C# grammar packages,
-- treat a failed native build as a dependency compatibility finding to investigate, not as permission to silently change the supported Node.js line.
-
-### P0.3 — Test Runner
-
-**Status:** Confirmed
-
-Decision:
-
-- use Vitest for backend tests and the Angular testing setup,
-- use `*.spec.ts` as the repository-wide test-file naming convention,
-- run Angular tests through the Angular CLI and backend tests directly through Vitest,
-- keep TypeScript type-checking as a separate command,
-- begin backend testing without a `vitest.config.ts` file and introduce configuration only when a concrete need appears.
-
-Reason:
-
-- one testing vocabulary reduces unnecessary context switching across the two applications,
-- Vitest is the default test runner used by the Angular CLI testing setup,
-- Vitest's default Node.js environment and test-file discovery are sufficient for the minimal backend harness,
-- deferring speculative configuration keeps `M1` proportionate to the MVP.
-
-Initial implementation boundary:
-
-- configure only what is required to run one small initial scenario,
-- do not add a coverage target, broad mock system, large fixture library or extensive browser E2E suite,
-- add further test configuration alongside relevant implementation needs rather than in advance.
-
-### P0.4 — Runtime Validation
-
-Status:
-
-- confirmed.
-
-Decision:
-
-- use Zod as the single primary runtime-schema validation approach for the MVP,
-- validate focused external structured data at the GitHub adapter boundary in `M2` and the Claude structured-output boundary in `M6`,
-- infer adapter-local boundary types from the schemas where practical while keeping the provider-neutral domain contracts hand-written and separate,
-- limit schemas to data-shape concerns; keep provider normalization and application business rules in their own components,
-- reject malformed external payloads explicitly rather than allowing unchecked assertions to introduce them into the domain model,
-- decide milestone-specific recovery behaviour when the relevant GitHub or Claude integration is designed,
-- do not revalidate every internal pipeline stage or introduce a second schema system without a concrete approved need.
-
-Reason:
-
-- Zod provides one TypeScript-oriented schema and parsing model for the two external-data boundaries required by the MVP,
-- schema-derived boundary types reduce drift between runtime validation and adapter-local TypeScript types,
-- its structured errors, nested-schema composition and discriminated-union support are proportionate for GitHub and Claude payloads,
-- its JSON Schema conversion preserves a practical path toward later OpenAPI tooling without selecting the `M8` HTTP framework or contract-sharing strategy prematurely.
-
-### P0.5 — SQLite Driver
-
-Decision to make:
-
-- select the Node.js driver through which the cache adapter uses SQLite.
-
-Candidates to compare:
-
-- `better-sqlite3`,
-- the built-in `node:sqlite` API.
-
-Current direction:
-
-- prefer a mature, simple driver behind an `AnalysisResultCache` interface;
-- do not introduce an ORM for the initial cache tables.
-
-### P0.6 — Backend HTTP Framework
-
-Decision to make:
-
-- select the small HTTP framework used to expose the backend API.
-
-Candidates to compare:
-
-- Fastify,
-- Express,
-- NestJS.
-
-Current direction:
-
-- prefer a small framework proportionate to the MVP orchestration API,
-- consider integration with the validation approach selected in `P0.4` and practical OpenAPI specification generation,
-- do not select the later contract-sharing strategy prematurely.
-
-### P0 Repository-Foundation Exit Criteria
-
-The repository-foundation part of `P0` is complete when:
-
-- [x] repository and package organization is understood and recorded,
-- [x] the supported Node.js version is understood and recorded,
-- [x] the test runner needed by `M1` is understood and recorded,
-- [x] the project directory is initialized as a Git repository,
-- [x] the approved design documents have a baseline commit,
-- [x] the minimal workspace structure exists,
-- [x] install, build, type-check, test and lint commands can run,
-- [x] a concise project `CLAUDE.md` documents the locked boundaries and commands,
-- [x] no feature implementation has been added.
-
-Runtime validation, the SQLite driver and the HTTP framework remain tracked `P0` implementation decisions, but they are confirmed at their later milestone gates and do not block `M1`.
-
-Suggested commit:
-
-```text
-chore: initialize project workspace
-```
+The existing npm workspace, supported Node.js release line and root verification commands remain unchanged.
 
 ---
 
-# Implementation Milestones
+# Completed Milestones
 
-## M1 — Domain Contracts and Minimal Test Harness
+## M1 — Initial Domain Contracts and Test Harness
 
-### 1. What We Implement
+**Status:** Complete under the previous design
 
-Define the core TypeScript data contracts for normalized pull requests, changed files, Candidate Evidence, Candidate Pairs, Context Bundles, screening results, Detailed Analysis Results and Coverage Limitations.
+The repository contains provider-neutral pull-request, candidate-evidence, context and AI-result contracts together with the Vitest harness.
 
-Configure only the minimal test runner and add one small initial test scenario. Introduce a test-data builder or fixture only if that first scenario becomes clearer or less repetitive with it.
+Some contracts are now broader than the simplified MVP. M3 will replace the old evidence-rule model and remove obsolete context and AI-result types rather than preserving abstractions tied to the previous design.
 
-### 2. Why We Need It
-
-Every later stage exchanges these objects. Defining them first prevents GitHub response shapes, Tree-sitter details or Claude responses from becoming the internal domain model.
-
-The minimal test harness provides a repeatable verification method without designing a broad test system before application behaviour exists.
-
-### 3. Design Decisions Implemented
-
-- provider-neutral normalized inputs,
-- separation of deterministic evidence from AI reasoning,
-- explainable evidence and coverage limitations.
-
-### 4. Likely Components
-
-- backend domain types,
-- shared API DTOs only where the frontend genuinely needs them,
-- minimal test-runner configuration,
-- one small initial test scenario,
-- a test-data builder or fixture only when the initial scenario benefits from it.
-
-### 5. Verification
-
-- TypeScript compilation succeeds,
-- schemas accept valid examples and reject invalid examples where runtime validation is required,
-- one small scenario can be constructed without GitHub or Claude access.
-
-### 6. Commit Point
+Commit already completed:
 
 ```text
 feat: add analysis domain contracts and minimal test harness
@@ -325,42 +82,22 @@ feat: add analysis domain contracts and minimal test harness
 
 ## M2 — GitHub Integration and Pull Request Eligibility
 
-**Status:** Complete
+**Status:** Complete and retained
 
-### 1. What We Implement
+Implemented capabilities include:
 
-Implement the GitHub REST adapter for pull-request metadata, review history, changed-file metadata, available patches and selected file versions.
+- GitHub REST request handling and pagination,
+- focused Zod response validation,
+- effective review-state calculation,
+- approved-PR eligibility,
+- changed-file normalization,
+- immutable comparison-base and head revisions,
+- bounded selected-file retrieval,
+- explicit unavailable-content results.
 
-Normalize the effective review state and select open, non-draft, actively approved pull requests for the selected target branch.
+The robust provider boundary remains useful to the simplified MVP and is not redesigned.
 
-### 2. Why We Need It
-
-The analysis pipeline needs real pull-request inputs without depending directly on GitHub-specific response formats.
-
-### 3. Design Decisions Implemented
-
-- GitHub-only MVP with provider-neutral core,
-- effective approval state,
-- bounded on-demand file retrieval.
-
-### 4. Likely Components
-
-- `SourceControlProvider` interface,
-- GitHub REST client/adapter,
-- eligibility service,
-- normalized mapping functions,
-- stored GitHub response fixtures.
-
-### 5. Verification
-
-- pagination tests,
-- approval/comment/changes-requested scenarios,
-- draft and target-branch filtering,
-- added, modified, deleted and renamed file cases,
-- missing-patch and unavailable-content behaviour,
-- no live GitHub dependency in normal unit tests.
-
-### 6. Commit Point
+Commit already completed:
 
 ```text
 feat: retrieve and normalize eligible GitHub pull requests
@@ -368,346 +105,220 @@ feat: retrieve and normalize eligible GitHub pull requests
 
 ---
 
-## M3 — Basic Candidate Discovery
+# Remaining MVP Milestones
 
-### 1. What We Implement
+## M3 — Controlled Scenarios and Structural Candidate Discovery
 
-Generate every unique PR pair within the same target branch and implement:
+### Goal
 
-- `SAME_CHANGED_FILE`,
-- `SHARED_IDENTIFIER`,
-- `CHANGED_IDENTIFIER_IN_OTHER_CHANGED_FILE`.
+Produce explainable Technical Term Matches for changed TypeScript files and prepare the focused source material needed by the later AI assessment.
 
-### 2. Why We Need It
+### Scope
 
-This is the first deterministic reduction of the possible PR pair set and provides evidence without AI cost.
+1. Simplify the domain contracts:
+   - remove `CandidateEvidenceRuleId`,
+   - replace `CandidateEvidence` with `TechnicalTermMatch`,
+   - define changed-region and matching-occurrence locations,
+   - derive Candidate Pair selection from a non-empty match collection,
+   - replace broad coverage types with simple analysis warnings,
+   - remove obsolete screening and detailed-analysis contracts tied to the previous evidence/context model; M4 introduces the replacement Risk Assessment contract.
 
-### 3. Design Decisions Implemented
+2. Add controlled TypeScript scenarios before or together with the analyzer:
+   - changed function signature plus call in another changed file,
+   - behaviour change associated with an enclosing function,
+   - model/property change plus matching occurrence,
+   - occurrence outside the other PR's patch,
+   - missing or insufficient provider patch recovered through local diff reconstruction,
+   - coincidental same-name match,
+   - unrelated PRs,
+   - unsupported input warning.
 
-- deterministic Candidate Discovery before AI,
-- explainable selection,
-- no numeric Interaction Score.
+3. Generate each unordered same-target-branch PR pair exactly once.
 
-### 4. Likely Components
+4. Parse supported files once per pull request and extract:
+   - technical terms associated with changed ranges,
+   - structural occurrences in the resulting file,
+   - source ranges useful for enclosing snippets.
+
+5. Match both directions:
+
+```text
+PR A changed terms ∩ PR B occurrences
+PR B changed terms ∩ PR A occurrences
+```
+
+6. Support added `.ts` files from their complete resulting content. For modified `.ts` files, prefer a usable provider patch and fall back to a bounded line diff between the selected file's immutable change-base and head versions.
+
+7. Produce warnings for deleted, renamed, unreconstructable, unavailable, oversized, unsupported or malformed inputs, identifying the affected pull request and file where applicable.
+
+8. Build a small internal Pair Analysis Input by selecting relevant change hunks and snippets before applying size limits. Invoke AI later only when at least one match retains its minimum required context; otherwise preserve an assessment-not-run warning for the Candidate Pair.
+
+### Deliberately Excluded
+
+- lexical fallback,
+- additional languages,
+- deleted or renamed file structural analysis,
+- semantic symbol resolution,
+- repository-wide context retrieval,
+- numeric evidence scores.
+
+### Likely Components
 
 - pair generator,
-- relevant-identifier extractor,
-- basic evidence evaluators,
-- evidence deduplication.
+- patch hunk/range parser,
+- bounded selected-file line-diff reconstructor,
+- structural-analyzer interface,
+- TypeScript Tree-sitter analyzer,
+- per-PR structural facts,
+- term-match evaluator,
+- focused snippet/input builder,
+- analysis-warning contract,
+- controlled fixtures.
 
-### 5. Verification
+### Verification
 
-- exactly one result for each unique pair,
-- focused unit tests for each evidence rule,
-- noise filtering tests,
-- stable evidence output,
-- unsupported-file fallback tests.
+- every unordered pair is generated once,
+- supported files are parsed once and reused,
+- both match directions are covered,
+- enclosing names outside changed lines are found,
+- occurrences outside the other patch are found,
+- missing or insufficient provider patches use bounded local reconstruction,
+- same-file and cross-file matches share one shape,
+- unsupported cases produce warnings,
+- no AI-ready input is produced when every match lacks critical context,
+- no fixed rule ID or stored candidate boolean remains,
+- normal tests require no live GitHub or Claude access.
 
-### 6. Commit Point
+### Commit Point
 
 ```text
-feat: add basic candidate discovery evidence
+feat: add TypeScript structural candidate discovery
 ```
 
 ---
 
-## M4 — Tree-sitter Structural Analysis
+## M4 — Single Claude Risk Assessment
 
-### 1. What We Implement
+### Goal
 
-Create a replaceable structural-analyzer interface and Tree-sitter implementations for TypeScript and C#.
+Interpret each Candidate Pair with sufficient focused input through one structured Claude assessment.
 
-Implement:
+### Scope
 
-- `SHARED_CHANGED_SYMBOL`,
-- `MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR`.
+- define a small provider-neutral `RiskAnalysisProvider`,
+- build one focused prompt from Pair Analysis Input,
+- do not invoke the provider for a Candidate Pair whose focused input failed the minimum-context check,
+- define one Zod-validated output schema,
+- return `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
+- include explanation and confidence,
+- include changed assumption, severity and reviewer check for identified risks,
+- preserve analysis warnings,
+- use a fake provider in normal tests,
+- provide one opt-in real-provider smoke test.
 
-### 2. Why We Need It
+### Deliberately Excluded
 
-Structural parsing distinguishes definitions, calls, classes and enclosing structures from plain textual identifier occurrences.
+- screening and escalation tiers,
+- SQLite result caching,
+- provider prompt caching,
+- multiple providers,
+- agentic repository retrieval,
+- multiple findings per pair.
 
-### 3. Design Decisions Implemented
+### Verification
 
-- lightweight structural analysis,
-- Tree-sitter as a replaceable analyzer,
-- structural rather than complete semantic resolution,
-- exactly five total MVP evidence rules.
+- valid structured outputs are normalized,
+- malformed outputs fail explicitly,
+- evidence and inference remain distinguishable,
+- warnings affect uncertainty rather than disappearing,
+- critical missing input is surfaced as assessment not run rather than no risk,
+- related-but-compatible scenarios can return no risk,
+- normal tests make no paid provider calls.
 
-### 4. Likely Components
-
-- language detection,
-- normalized structural facts,
-- TypeScript queries,
-- C# queries,
-- structural evidence evaluators,
-- real `.ts` and `.cs` fixture files.
-
-### 5. Verification
-
-- definitions and calls are recognized in both supported languages,
-- malformed source fails gracefully,
-- same-name but different structural-role scenarios are covered,
-- binary, oversized and unsupported files bypass Tree-sitter,
-- no sixth evidence rule is introduced.
-
-### 6. Commit Points
+### Commit Point
 
 ```text
-feat: add TypeScript structural analysis
-feat: complete C# structural candidate evidence
+feat: add Claude cross-PR risk assessment
 ```
 
 ---
 
-## M5 — Focused Repository Context Retrieval
+## M5 — Minimal End-to-End Application
 
-### 1. What We Implement
+### Goal
 
-Build Context Bundles from relevant diff hunks, evidence, enclosing structures, selected definitions/calls, bounded snippets, retrieval reasons and coverage limitations.
+Expose the working pipeline through one backend operation and one useful Angular page.
 
-Reuse file contents already retrieved during Candidate Discovery. Construct a local diff for bounded text files when the provider patch is unavailable or insufficient and the operation requires it.
+### Backend Scope
 
-### 2. Why We Need It
+- select a small HTTP framework at the start of the milestone,
+- expose one synchronous repository/branch analysis operation,
+- compose the GitHub provider, Candidate Discovery and Claude assessment,
+- return counts, assessments and warnings,
+- validate external request and response boundaries,
+- map errors without exposing credentials.
 
-Claude needs enough context to reason correctly, but sending complete files or repositories would add cost, noise and unexplained data.
+### Frontend Scope
 
-### 3. Design Decisions Implemented
+- repository and target-branch input,
+- analysis action and loading state,
+- eligible-PR and Candidate-Pair counts,
+- risk/no-risk results,
+- assessment-not-run state for discovered pairs without viable focused input,
+- Technical Term Match evidence,
+- confidence, severity and reviewer checks,
+- visible analysis warnings,
+- empty and error states.
 
-- focused deterministic context,
-- explainable retrieval reasons,
-- bounded on-demand content retrieval,
-- explicit partial-analysis coverage.
+### Deliberately Excluded
 
-### 4. Likely Components
+- background jobs and polling,
+- persisted run history,
+- authentication and user accounts,
+- advanced filters,
+- production deployment infrastructure.
 
-- context-selection rules,
-- snippet range calculation,
-- enclosing-structure lookup,
-- deduplication,
-- per-analysis content reuse,
-- local diff fallback,
-- Context Bundle serializer.
-
-### 5. Verification
-
-- every extra snippet has a retrieval reason,
-- duplicate snippets are removed,
-- configured bounds are respected,
-- unavailable content becomes a visible limitation,
-- complete repositories are never added to the Context Bundle.
-
-### 6. Commit Point
-
-```text
-feat: build focused repository context bundles
-```
-
----
-
-## M6 — Tiered Claude Risk Analysis
-
-### 1. What We Implement
-
-Define the AI-provider boundary, screening and detailed-analysis schemas, prompt templates, Claude adapter and output validation.
-
-### 2. Why We Need It
-
-Candidate Discovery identifies technical relationships but cannot decide whether they represent plausible changed assumptions or integration risks.
-
-### 3. Design Decisions Implemented
-
-- Claude as the MVP provider,
-- cheap screening before detailed analysis,
-- `DISMISS` or `ESCALATE`,
-- uncertainty and material missing context cause escalation,
-- evidence is separated from inference,
-- structured confidence, severity and reviewer checks.
-
-### 4. Likely Components
-
-- `RiskAnalysisProvider` interface,
-- Claude SDK adapter,
-- screening and detailed prompt builders,
-- runtime output schemas,
-- fake provider for deterministic tests.
-
-### 5. Verification
-
-- valid outputs are parsed,
-- malformed outputs fail safely,
-- uncertainty escalates,
-- missing critical context does not cause dismissal,
-- normal tests make no paid Claude calls,
-- a small opt-in provider smoke test can be run separately.
-
-### 6. Commit Points
-
-```text
-feat: add tiered AI analysis contracts
-feat: integrate Claude risk analysis
-```
-
----
-
-## M7 — SQLite Result Cache
-
-### 1. What We Implement
-
-Implement independent screening and detailed-result cache entries using a deterministic key derived from PR revisions, relevant analysis input and analysis configuration versions.
-
-### 2. Why We Need It
-
-Unchanged analyses should not repeat paid AI requests.
-
-### 3. Design Decisions Implemented
-
-- application-level result caching,
-- result caching remains separate from provider prompt caching,
-- cache storage is replaceable.
-
-### 4. Likely Components
-
-- `AnalysisResultCache` interface,
-- SQLite adapter,
-- schema migration or initialization,
-- cache-key builder,
-- in-memory fake for tests.
-
-### 5. Verification
-
-- cache hit avoids the AI provider,
-- changed PR revision invalidates the key,
-- changed prompt/schema/configuration version invalidates the key,
-- screening and detailed results are stored independently,
-- corrupted data fails safely.
-
-### 6. Commit Point
-
-```text
-feat: cache AI analysis results in SQLite
-```
-
----
-
-## M8 — Backend Analysis API
-
-### 1. What We Implement
-
-Expose the complete workflow through HTTP endpoints for repository/branch selection, analysis execution, status and findings.
-
-Before implementation begins, decide how the Angular application will consume the public HTTP contracts:
-
-- a shared `packages/contracts` workspace, or
-- frontend types generated from an OpenAPI specification.
-
-Base the decision on the HTTP framework selected in `P0.6`, the validation approach selected in `P0.4` and the actual request/response schemas. Do not expose backend domain types directly merely to avoid defining explicit API contracts.
-
-### 2. Why We Need It
-
-The Angular frontend needs one stable API that orchestrates the already-tested components.
-
-### 3. Design Decisions Implemented
-
-- separate backend API and frontend,
-- orchestration without merging component responsibilities,
-- human-readable errors and coverage limitations.
-
-### 4. Likely Components
-
-- HTTP routes,
-- request/response schemas,
-- analysis application service,
-- composition root for real adapters,
-- error mapping and logging.
-
-### 5. Verification
+### Verification
 
 - API integration tests use fake external providers,
-- invalid requests are rejected,
-- the complete deterministic-to-AI workflow is exercised,
-- errors do not expose credentials or raw sensitive data.
+- Angular tests cover the primary states,
+- a manual browser walkthrough completes the flow,
+- the complete repository is never sent to Claude,
+- no persistent cache or tiered AI orchestration appears implicitly.
 
-### 6. Commit Point
+### Commit Points
 
 ```text
-feat: expose cross-PR analysis API
+feat: expose synchronous analysis API
+feat: add reviewer analysis dashboard
 ```
 
 ---
 
-## M9 — Angular Reviewer Dashboard
+## M6 — Reproducible Demo and MVP Hardening
 
-### 1. What We Implement
+### Goal
 
-Create the repository and branch input workflow, analysis action, summary counts, findings list, evidence details, confidence, severity, reviewer checks and coverage warnings.
+Demonstrate the product reliably with known cross-PR scenarios and clear setup documentation.
 
-### 2. Why We Need It
+### Scope
 
-The portfolio result must make the cross-PR analysis understandable and useful to a human reviewer.
+- create or configure a controlled GitHub demo repository,
+- connect the M3 scenarios to the end-to-end demonstration,
+- document token and provider configuration,
+- complete error messages and visible limitations,
+- record the expected walkthrough and outputs,
+- verify fresh-clone setup.
 
-### 3. Design Decisions Implemented
+### Verification
 
-- human-in-the-loop workflow,
-- explainable findings,
-- no automatic approval, rejection or merging.
+- a designed non-textual cross-PR risk is identified,
+- a coincidental structural match is dismissed,
+- an unrelated pair is filtered before AI,
+- unsupported input produces a visible warning,
+- the complete UI workflow is reproducible.
 
-### 4. Likely Components
-
-- Angular pages and components,
-- typed API client,
-- analysis state service,
-- loading, empty and error states,
-- findings and evidence presentation.
-
-### 5. Verification
-
-- component tests,
-- API-client tests,
-- manual browser walkthrough,
-- visible partial-analysis warnings,
-- no numeric Candidate Pair ranking is introduced.
-
-### 6. Commit Points
-
-```text
-feat: add analysis dashboard workflow
-feat: display explainable risk findings
-```
-
----
-
-## M10 — Controlled Demo and MVP Hardening
-
-### 1. What We Implement
-
-Create a small controlled demonstration with known related and unrelated PR scenarios. Complete setup documentation, error handling and the final end-to-end walkthrough.
-
-### 2. Why We Need It
-
-A portfolio project needs a repeatable demonstration of the engineering workflow, not only source code.
-
-### 3. Design Decisions Implemented
-
-- complete and credible MVP over exhaustive detection,
-- designed risk scenarios,
-- explicit limitations and human review.
-
-### 4. Likely Components
-
-- controlled repository or scenario set,
-- opt-in end-to-end configuration,
-- README setup and architecture walkthrough,
-- demo screenshots or recording notes.
-
-### 5. Verification
-
-- fresh-clone setup succeeds,
-- the success criteria in `07-mvp-specification.md` are demonstrated,
-- unrelated pairs can be dismissed,
-- designed cross-PR risks produce explainable findings,
-- unchanged analyses reuse cached results.
-
-### 6. Commit Point
+### Commit Point
 
 ```text
 docs: complete reproducible MVP demonstration
@@ -715,54 +326,71 @@ docs: complete reproducible MVP demonstration
 
 ---
 
-## Testing Strategy Across the Milestones
+# Planned Post-MVP Roadmap
 
-Tests are added alongside the implementation of the relevant behaviour. They are not designed in bulk before the application code exists.
+These improvements remain part of the product direction. They are implemented only after the first workflow provides measurements and real usage evidence.
 
-Automated tests prioritize critical deterministic behaviour and meaningful regression risk. In particular, they protect:
+## R1 — Tiered AI Analysis
 
-- GitHub approval and eligibility rules,
-- all five approved Candidate Discovery evidence rules,
-- focused-context selection, configured bounds and coverage limitations,
-- screening and detailed-analysis response validation and escalation behaviour,
-- cache hits and invalidation behaviour.
+Add cheap screening plus detailed escalation when Candidate Pair volume makes one full assessment per candidate too expensive. Measure cost savings and false dismissals before making screening a hard filter.
 
-Testing uses the smallest useful form of controlled data:
+## R2 — SQLite Result Cache
 
-- inline objects for small pure unit tests,
-- a builder only when repeated setup makes a relevant scenario harder to read,
-- small `.diff`, `.ts` and `.cs` fixtures only when real formatting matters,
-- small stored provider responses only when the GitHub response shape matters,
-- focused fakes at external boundaries for a small number of integration or application-flow tests.
+Add durable cache entries keyed by PR revisions, focused input and analysis configuration. Keep the cache behind a replaceable interface. If R1 exists, cache screening and detailed results independently where useful.
 
-Selected Angular component and API-client tests remain part of the MVP. A small number of opt-in checks may exercise the real GitHub and Claude providers outside the normal test suite. Manual testing is retained for the real GitHub, Claude and Angular workflow, including a manual browser walkthrough.
+## R3 — Provider Prompt Caching
 
-The MVP does not require a coverage percentage or a test for every function. It does not introduce an extensive browser E2E suite, a broad mock system or a large fixture library.
+Enable provider prompt caching for stable repeated prompt prefixes when supported and when token/cost measurements demonstrate value.
 
-Fixtures are test inputs, not a second implementation of the application. When needed, they remain small, readable, synthetic and free of private company code or secrets.
+## R4 — Broader Candidate Coverage
+
+Add deleted and renamed file analysis, additional languages, richer symbol resolution and a lexical fallback only if benchmarks justify it.
+
+## R5 — Richer Context and Operations
+
+Evaluate repository indexes, semantic retrieval, RAG, agentic investigation, asynchronous jobs, persistent run history, continuous monitoring and additional providers.
 
 ---
 
-## Scope-Control Rules
+# Testing Strategy
 
-The following are not added during the MVP unless the approved design is explicitly revised:
+Tests are added with the behaviour they protect.
 
-- Git textual merge-conflict detection,
-- build or test execution for analyzed pull requests,
-- numeric Interaction Score,
+Priority areas are:
+
+- GitHub eligibility and normalization,
+- controlled Candidate Discovery scenarios,
+- Technical Term Match production,
+- provider-patch and bounded local-diff changed-range extraction,
+- focused input bounds and warnings,
+- Claude output validation,
+- one end-to-end application flow.
+
+Use small synthetic fixtures and fakes at external boundaries. Normal tests must not require live GitHub or paid Claude access. No coverage percentage, large fixture framework or broad browser E2E suite is required for the MVP.
+
+---
+
+# Scope-Control Rules
+
+Do not add during the MVP without an explicit design revision:
+
+- Git textual conflict detection,
+- build or test execution for analyzed repositories,
+- numeric candidate scoring,
 - full semantic symbol resolution,
-- repository-wide symbol indexing,
-- RAG or vector databases,
-- autonomous repository exploration,
-- multiple source-control or AI-provider implementations,
-- distributed queues or production-scale deployment infrastructure.
+- repository-wide indexes or RAG,
+- tiered AI analysis,
+- persistent result caching,
+- prompt-caching orchestration,
+- multiple source-control or AI providers,
+- asynchronous job infrastructure.
 
-Implementation details should remain implementation details unless they materially change component responsibilities, system boundaries or the MVP contract.
+These exclusions control the first implementation only. The post-MVP roadmap preserves the intended evolution paths.
 
 ---
 
-## Immediate Next Step
+# Immediate Next Step
 
-Review and plan the first bounded implementation slice of `M3 — Basic Candidate Discovery`.
+Review and commit the complete simplified-design diff.
 
-Begin with unique same-target-branch PR-pair generation and the first approved deterministic evidence rules. Preserve provider patches as the primary change representation and use selected-file fallback only when a rule requires it. Do not introduce Tree-sitter structural analysis before `M4`. The SQLite driver and HTTP framework remain deferred until their stated milestone gates.
+After approval, begin M3 with the controlled TypeScript scenarios and domain-contract simplification before installing or implementing Tree-sitter behaviour.

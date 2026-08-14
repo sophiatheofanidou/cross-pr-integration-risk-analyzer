@@ -1,33 +1,18 @@
 # Design Log
 
-This document records the main architectural and product decisions made during the design of the Cross-PR Integration Risk Analyzer.
-
-Its purpose is to preserve the reasoning behind important choices without repeating detailed design information from the component documents.
+This document records the major product and architecture decisions of the Cross-PR Integration Risk Analyzer. It distinguishes decisions required by the simplified MVP from valuable improvements intentionally deferred until the core workflow is demonstrated.
 
 ---
 
-# Accepted Decisions
+# Accepted MVP Decisions
 
 ## ADR-001 — Deterministic Candidate Discovery Before AI
 
 **Status:** Accepted
 
-### Decision
+Candidate Discovery performs deterministic structural analysis before AI Risk Analysis.
 
-Candidate Discovery performs inexpensive deterministic analysis before AI Risk Analysis.
-
-### Reason
-
-The deterministic stage:
-
-- reduces unnecessary AI usage,
-- produces explainable Candidate Pair evidence,
-- remains reproducible,
-- is straightforward to test.
-
-The system does not attempt to solve semantic integration risk deterministically.
-
-Semantic interpretation remains the responsibility of AI Risk Analysis.
+This reduces unnecessary AI calls, produces reproducible evidence and preserves the product's set-level discovery value. Semantic risk interpretation remains the responsibility of AI.
 
 ---
 
@@ -35,449 +20,305 @@ Semantic interpretation remains the responsibility of AI Risk Analysis.
 
 **Status:** Accepted
 
-### Decision
-
-The system never automatically approves, rejects or merges pull requests.
-
-### Reason
-
-The objective is to improve reviewer awareness and prioritization rather than replace engineering judgement.
+The system never automatically approves, rejects or merges pull requests. It provides evidence, explanations and reviewer checks.
 
 ---
 
-## ADR-003 — Approved Pull Requests as the Primary Analysis Scope
+## ADR-003 — Approved Pull Requests as the Primary Scope
 
 **Status:** Accepted
 
-### Decision
+The primary workflow analyzes open, non-draft, actively approved pull requests targeting the same selected branch.
 
-The primary workflow analyzes open, non-draft, approved pull requests targeting the same selected branch.
-
-### Reason
-
-The project focuses on changes that have already passed normal individual code review and are realistic candidates for integration.
+These changes have already passed normal individual review and are realistic integration candidates.
 
 ---
 
-## ADR-004 — Cross-PR Integration Risk, Not Git Merge Conflict Detection
+## ADR-004 — Cross-PR Risk, Not Git Conflict Detection
 
 **Status:** Accepted
 
-### Decision
-
-Git-detectable textual merge conflicts are outside the responsibility of the analyzer.
-
-### Reason
-
-Existing source-control tooling already identifies textual merge conflicts.
+Git-detectable textual merge conflicts are outside the analyzer's responsibility.
 
 The project focuses on changes that can coexist textually but may still be semantically or behaviourally incompatible.
 
 ---
 
-## ADR-005 — Lightweight Candidate Evidence Instead of Full Static Analysis
+## ADR-005 — Language-Aware Structural Candidate Discovery
 
 **Status:** Accepted
 
-### Decision
+Candidate Discovery uses bounded language-aware structural analysis behind a replaceable analyzer boundary.
 
-Candidate Discovery uses lightweight technical evidence rather than attempting complete static-program analysis.
+Concrete language support belongs to a release specification, not the architecture. The MVP does not add a lexical fallback merely to claim generic language coverage.
 
-### Reason
-
-The deterministic stage only needs to identify which PR pairs deserve semantic analysis.
-
-Complete dependency and semantic resolution would significantly increase implementation complexity without being necessary for the portfolio MVP.
+Structural parsing is lightweight evidence extraction, not full static or semantic program analysis.
 
 ---
 
-## ADR-006 — No Interaction Score in the Initial Design
+## ADR-006 — Technical Term Matches as Candidate Evidence
 
 **Status:** Accepted
 
-### Decision
+Candidate Discovery represents evidence directly as Technical Term Matches.
 
-Candidate Pair selection does not initially depend on weighted evidence or a numeric Interaction Score.
+A match contains:
 
-A pair becomes a candidate when at least one configured meaningful technical evidence rule matches.
+- the technical term,
+- the changed-region location,
+- the matching-occurrence location.
 
-### Reason
+Each unordered PR pair is evaluated in both directions. Same-file and cross-file locations use the same match shape.
 
-The previous scoring model introduced arbitrary weights and thresholds before there was evidence that ranking was necessary.
+A pair becomes a Candidate Pair when its match collection is non-empty:
 
-If candidate volume later becomes excessive, evidence ranking can be introduced based on measured behaviour.
+```text
+isCandidate = technicalTermMatches.length > 0
+```
+
+The contract stores neither a fixed evidence-rule ID nor a redundant candidate boolean.
+
+Matching names do not prove semantic symbol identity. AI evaluates whether the structural relationship matters.
 
 ---
 
-## ADR-007 — Structural Analysis Through a Replaceable Analyzer
+## ADR-007 — No Numeric Candidate Score
 
 **Status:** Accepted
 
-### Decision
+The MVP does not assign arbitrary weights or an Interaction Score to Candidate Discovery evidence.
 
-Candidate Discovery may enrich basic file/diff evidence through language-aware structural analysis.
-
-The initial implementation uses Tree-sitter.
-
-### Reason
-
-Structural parsing provides stronger evidence than raw string matching while remaining deterministic and inexpensive.
-
-The architecture does not depend permanently on Tree-sitter; structural analysis remains a replaceable capability.
+Ranking may be reconsidered only when measured Candidate Pair volume demonstrates a practical need.
 
 ---
 
-## ADR-008 — Tree-sitter Provides Structural, Not Full Semantic, Analysis
+## ADR-008 — Focused AI Input Without Repository-Wide Retrieval
 
 **Status:** Accepted
 
-### Decision
+AI Risk Analysis receives relevant change hunks, Technical Term Matches, bounded enclosing snippets and explicit warnings rather than the complete repository. Match-centered material is selected before input limits are applied.
 
-Tree-sitter is used to identify syntactic structures such as:
+Focused input preparation remains a separate responsibility but is implemented as a small builder in the MVP, not as a standalone repository-context subsystem.
 
-- functions,
-- methods,
-- classes,
-- calls,
-- changed enclosing structures.
-
-It is not treated as a complete symbol-resolution engine.
-
-### Reason
-
-Complete resolution across imports, aliases, overloads, inheritance and dynamic behaviour would substantially increase complexity.
-
-The AI stage can evaluate uncertain structural relationships.
+The provider is invoked only when at least one match retains sufficient change and source context. A discovered but unassessable pair remains visible with an explicit warning and no AI risk status.
 
 ---
 
-## ADR-009 — Focused Repository Context
+## ADR-009 — One AI Assessment per Candidate Pair in the MVP
 
 **Status:** Accepted
 
-### Decision
+The MVP uses one validated Claude assessment per Candidate Pair with sufficient focused input.
 
-AI Risk Analysis receives a focused Context Bundle rather than the complete repository.
-
-### Reason
-
-Focused context:
-
-- reduces token usage,
-- reduces irrelevant information,
-- improves explainability,
-- makes AI cost easier to control.
+Candidate Discovery already provides the first cost-control filter. A second AI screening tier is deferred until measurements justify its extra prompts, schemas and orchestration.
 
 ---
 
-## ADR-010 — Tiered AI Analysis
+## ADR-010 — No Persistent Cache in the MVP
 
 **Status:** Accepted
 
-### Decision
+The MVP does not require persistent analysis caching. Each unique Candidate Pair is assessed once within one analysis run.
 
-AI Risk Analysis separates:
-
-1. inexpensive screening,
-2. detailed reasoning for suspicious or uncertain candidates.
-
-### Reason
-
-Not every technically related Candidate Pair requires the strongest available AI model.
-
-Tiered analysis provides an explicit cost-control mechanism while preserving deeper reasoning where necessary.
+Persistent caching is an optimization of a repeated workflow, not a prerequisite for demonstrating the workflow itself.
 
 ---
 
-## ADR-011 — Uncertain Screening Results Are Escalated
+## ADR-011 — Provider Patches with Bounded Local-Diff Fallback
 
 **Status:** Accepted
 
-### Decision
+Usable provider patches are the preferred MVP source for changed ranges. Resulting changed-file content is retrieved at the immutable pull-request head when structural occurrence search or enclosing context requires it.
 
-The screening model should escalate uncertain Candidate Pairs rather than dismiss them.
+For a modified file with a missing or insufficient provider patch, the MVP retrieves bounded versions of that selected file at the immutable change-base and head revisions and reconstructs a local line diff. The file is skipped with an explicit warning only if neither source can provide reliable changed ranges and resulting content. Added files treat their complete resulting content as changed.
 
-### Reason
-
-Screening exists to remove clearly uninteresting relationships, not to aggressively optimize cost at the expense of obvious recall loss.
+This fallback protects the core one-language detection path from provider diff limits without introducing repository-wide retrieval or sending large patches to AI.
 
 ---
 
-## ADR-012 — Application-Level Result Caching
+## ADR-012 — Explicit Warnings Instead of a Coverage Subsystem
 
 **Status:** Accepted
 
-### Decision
+Unavailable, oversized, unsupported or insufficient inputs produce simple structured analysis warnings.
 
-AI analysis results are cached when the relevant pull request versions and analysis inputs remain unchanged.
-
-### Reason
-
-Repeated analysis of unchanged PR pairs should not result in repeated AI cost.
-
-A valid cached result can be reused without making another AI request.
+The MVP must distinguish incomplete analysis from a completed analysis with no match, but it does not require a broad coverage taxonomy or dedicated subsystem.
 
 ---
 
-## ADR-013 — Prompt Caching as an Additional Optimization
+## ADR-013 — Zod at External Structured-Data Boundaries
 
 **Status:** Accepted
 
-### Decision
-
-Provider-level prompt caching may be used when available to reuse repeated stable prompt content across different analyses.
-
-### Reason
-
-The same PR or shared instructions may appear in multiple AI requests.
-
-Prompt caching can reduce repeated input processing while remaining independent from application-level result caching.
+Zod validates focused GitHub responses and structured Claude output before normalization. Provider-neutral internal contracts remain hand-written and are not revalidated between every pipeline stage.
 
 ---
 
-## ADR-014 — Portfolio MVP Over Exhaustive Detection
+## ADR-014 — Synchronous MVP Analysis Operation
 
 **Status:** Accepted
 
-### Decision
-
-The first implementation prioritizes a complete, explainable and demonstrable workflow rather than exhaustive semantic coverage.
-
-### Reason
-
-The purpose of the project is to demonstrate strong engineering and AI-integration decisions within a reasonable portfolio implementation scope.
+The first end-to-end application exposes one simple synchronous analysis operation. Background jobs, persisted run status and distributed orchestration are deferred.
 
 ---
 
-## ADR-015 — Bounded On-Demand Repository Content Retrieval
+## ADR-015 — Controlled Scenarios Developed with Candidate Discovery
 
 **Status:** Accepted
 
-### Decision
+Known related, unrelated and unsupported scenarios for the MVP's configured source language are implemented together with Candidate Discovery rather than postponed until final hardening.
 
-Available pull-request diffs are the primary representation of change.
-
-When Candidate Discovery or Repository Context Retrieval requires more source context, the system retrieves only selected repository file versions through the Source Control Integration.
-
-For bounded supported text files, before-and-after versions may be used to construct a local diff when the provider-supplied patch is unavailable or insufficient.
-
-The before version is the immutable comparison base used to identify the changes introduced by the pull request; the after version is the immutable pull-request head. This decision does not define the current target-branch tip as the before version and does not introduce simulated-merge analysis.
-
-Retrieved contents are reused within the analysis run.
-
-Binary, unsupported, unavailable or oversized content is handled gracefully and produces explicit coverage information when its exclusion may affect the result.
-
-Analysis-coverage information is diagnostic metadata and does not introduce an additional Candidate Discovery evidence rule.
-
-### Reason
-
-Provider-supplied patches may not contain enough syntactic or enclosing context for structural analysis and focused retrieval.
-
-Targeted source retrieval supports accurate deterministic analysis without sending the complete repository to the AI or introducing repository-wide indexing.
-
-Keeping retrieval behind the Source Control Integration preserves the ability to support additional Git platforms through provider-specific adapters.
+The scenarios act as regression tests and as the foundation of the final product demonstration.
 
 ---
 
-## ADR-016 — Zod for External Runtime Validation
+## ADR-016 — Portfolio MVP Over Exhaustive Detection
 
 **Status:** Accepted
 
-### Decision
+The first implementation prioritizes a complete, explainable and demonstrable workflow rather than production-scale coverage or optimization.
 
-Zod is the single primary runtime-schema validation approach for the MVP.
+---
 
-Runtime validation is applied where external structured data enters the application. `M2` validates focused subsets of GitHub REST responses inside the GitHub adapter before normalization. `M6` applies the same approach to AI-generated screening and detailed-analysis output before constructing the corresponding domain results.
+# Planned Post-MVP Improvements
 
-Boundary types are inferred from Zod schemas where practical and remain local to their provider adapters. The provider-neutral domain contracts remain hand-written and separate from provider response shapes.
+The decisions in this section are intentionally preserved. They are deferred from the first vertical slice, not rejected or forgotten.
 
-Runtime schemas validate data shape, primitive types, required fields, nullability and allowed values. Provider-specific normalization and application business rules remain separate responsibilities.
+## FUTURE-001 — Tiered AI Analysis
 
-Malformed external payloads are rejected explicitly and are not treated as valid domain data, dismissals or no-risk results. Recovery behaviour is decided within the milestone that implements the relevant provider integration.
+**Status:** Planned after MVP validation
 
-Internal objects are not revalidated between every pipeline stage, and a second schema system is not introduced without a concrete approved need.
+Add inexpensive screening before detailed analysis when measured Candidate Pair volume and AI cost justify it.
 
-### Reason
+The intended flow remains:
 
-The MVP needs one understandable validation approach for nested GitHub data in `M2` and structured Claude output in `M6`. Zod provides TypeScript-oriented schema composition, inferred boundary types, structured validation errors and direct support for discriminated unions without requiring the application to build and maintain handwritten validation infrastructure.
+```text
+Candidate Pair
+      ↓
+Cheap Screening
+      ├── Dismiss
+      └── Escalate to Detailed Analysis
+```
 
-Zod can convert schemas to JSON Schema, including an OpenAPI-compatible target. This preserves a practical path toward later OpenAPI tooling without deciding the `M8` HTTP framework, API surface or contract-sharing strategy now.
+Uncertain and materially incomplete cases should escalate. Before implementation, evaluate screening precision, recall loss, model cost and orchestration complexity.
 
-JSON Schema with TypeBox and handwritten type guards remain viable techniques, but neither offers a proportionate advantage for these MVP boundaries. TypeBox would prioritize a JSON Schema-oriented authoring model before OpenAPI is a confirmed requirement, while handwritten guards would require repetitive nested validation and custom error reporting across both provider boundaries.
+---
+
+## FUTURE-002 — SQLite Result Caching
+
+**Status:** Planned after MVP validation
+
+Add application-level persistent caching when repeated analyses of unchanged PR pairs become part of the workflow.
+
+The cache key should include immutable PR revisions, focused analysis input, prompt/schema versions and relevant model configuration. A valid hit avoids the AI request entirely.
+
+SQLite remains the preferred local portfolio option because it provides durable storage without separate database infrastructure. The implementation should remain behind a replaceable cache interface.
+
+If tiered analysis is introduced, screening and detailed results may be cached independently.
+
+---
+
+## FUTURE-003 — Provider Prompt Caching
+
+**Status:** Planned when supported and measurable
+
+Use provider prompt caching when repeated stable prompt prefixes produce meaningful savings.
+
+Prompt caching reduces repeated input processing for new requests; it does not replace SQLite result caching, which can eliminate an unchanged request entirely.
+
+This optimization stays inside the AI-provider adapter and does not change provider-neutral risk contracts.
+
+---
+
+## FUTURE-004 — Broader Structural Coverage
+
+**Status:** Planned investigation
+
+Evaluate:
+
+- additional structural languages,
+- deleted and renamed file analysis,
+- richer symbol resolution,
+- a bounded lexical fallback only if measured value exceeds noise.
+
+---
+
+## FUTURE-005 — Richer Repository Context
+
+**Status:** Planned investigation
+
+Evaluate repository indexes, semantic retrieval, RAG, agentic exploration and external Repository Context Providers when focused changed-file context proves insufficient.
+
+---
+
+## FUTURE-006 — Operational and Product Evolution
+
+**Status:** Planned investigation
+
+Possible extensions include asynchronous jobs, persistent run history, continuous monitoring, richer reviewer filters, multiple providers and production deployment infrastructure.
 
 ---
 
 # Superseded Decisions
 
-## Previous Language-Agnostic-Only Candidate Discovery
+## Previous Five-Rule Candidate Evidence Model
 
 **Status:** Superseded
 
-### Previous Decision
+The earlier design defined separate IDs for same-file, shared-identifier, changed-identifier, shared-symbol and modified-definition evidence.
 
-Language-specific parsing was originally deferred entirely.
-
-### Revised Decision
-
-The architecture retains a generic deterministic fallback but now supports optional structural analysis.
-
-The MVP will demonstrate Tree-sitter structural parsing for selected languages.
+The categories overlapped relationship, detection method and syntactic role. They are replaced by the single `TechnicalTermMatch` evidence shape described in ADR-006.
 
 ---
 
-## Previous Interaction Evidence Score
+## Previous Language-Agnostic Lexical MVP Fallback
 
 **Status:** Superseded
 
-### Previous Decision
+The earlier MVP treated lexical matching as a generic fallback.
 
-Candidate evidence would contribute to a weighted Interaction Score used for ranking and threshold selection.
-
-### Revised Decision
-
-The first implementation selects Candidate Pairs directly from meaningful evidence.
-
-Numeric ranking may be reconsidered only if candidate volume creates a practical need.
+The revised MVP supports one structural language well and reports unsupported input explicitly. A lexical fallback remains only a measured future investigation.
 
 ---
 
-## Parser-Assisted Retrieval as Future-Only Work
+## Previous Tiered-AI MVP Requirement
 
-**Status:** Superseded
+**Status:** Deferred, not rejected
 
-### Previous Decision
-
-Language-specific parsing was considered future work.
-
-### Revised Decision
-
-Structural parsing now participates directly in Candidate Discovery and can also support focused context retrieval.
+Screening plus detailed analysis was previously required for the first version. It is now preserved as FUTURE-001 and will be added when candidate volume demonstrates the need.
 
 ---
 
-# Open Questions
+## Previous Persistent-Cache MVP Requirement
+
+**Status:** Deferred, not rejected
+
+SQLite result caching and provider prompt caching were previously part of the first version. They are now preserved as FUTURE-002 and FUTURE-003.
+
+---
+
+# Open Questions to Measure
 
 ## OQ-001 — Candidate Volume
 
-How many Candidate Pairs will the selected deterministic evidence rules produce on realistic repositories?
+How many Candidate Pairs do Technical Term Matches produce in realistic repositories?
 
-**Status:** To be observed during implementation.
+The answer determines whether ranking or tiered AI analysis becomes worthwhile.
 
-A formal benchmark is not required before the MVP is completed.
+## OQ-002 — Candidate Quality
 
----
+Which extracted term kinds provide useful recall without excessive coincidental matches?
 
-## OQ-002 — Concrete AI Models
+Controlled scenarios guide the first implementation; broader benchmarking follows the MVP.
 
-Which specific models should be used for:
+## OQ-003 — Context Sufficiency
 
-- Screening,
-- Detailed Analysis?
+When are patches and enclosing changed-file snippets insufficient for reliable AI assessment?
 
-**Status:** Implementation configuration.
+The answer determines whether richer repository context should be introduced.
 
-The architecture defines the roles rather than fixed model names.
+## OQ-004 — Repeated-Analysis Value
 
----
+How often are unchanged PR pairs analyzed again across application runs?
 
-## OQ-003 — Context Size
-
-How much code context should be included before additional information stops improving analysis quality?
-
-**Status:** Tune during implementation.
-
-Formal optimization is deferred.
-
----
-
-## OQ-004 — Reviewer Scope Filtering
-
-Should the first UI version support filtering PR relationships by reviewer, author or responsible engineer?
-
-**Status:** Optional MVP enhancement.
-
----
-
-# Future Investigations
-
-## IDEA-001 — Controlled Benchmark Repository
-
-Create controlled pull request scenarios with known outcomes for measuring:
-
-- recall,
-- false positives,
-- candidate reduction,
-- AI cost,
-- regression behaviour.
-
----
-
-## IDEA-002 — Additional Structural Languages
-
-Extend structural analysis to additional languages such as:
-
-- Java,
-- Kotlin.
-
----
-
-## IDEA-003 — Richer Symbol Resolution
-
-Evaluate more accurate cross-file symbol resolution if simple structural matching produces too many false positives or misses important relationships.
-
----
-
-## IDEA-004 — Repository-Wide Structural Index
-
-Evaluate whether indexing definitions and references across the repository improves Candidate Discovery enough to justify additional complexity.
-
----
-
-## IDEA-005 — Agentic Candidate Discovery
-
-Compare the deterministic approach against a tool-using AI agent capable of performing repository searches dynamically.
-
----
-
-## IDEA-006 — Repository Context Provider / RAG
-
-Investigate a standalone repository-context or RAG system that could later integrate through a replaceable Repository Context Provider abstraction.
-
----
-
-## IDEA-007 — Cost and Recall Benchmarking
-
-After the MVP is complete, compare:
-
-- deterministic discovery,
-- hybrid approaches,
-- agentic discovery,
-- different screening models,
-- different detailed-analysis models.
-
-Measure:
-
-- recall,
-- false positives,
-- input tokens,
-- output tokens,
-- total AI cost,
-- latency.
-
----
-
-## IDEA-008 — Incremental Analysis
-
-Explore continuous or event-driven analysis in which newly approved or updated pull requests are analyzed against the existing active PR set without repeating unnecessary work.
-
----
-
-## IDEA-009 — Additional Providers
-
-Future versions may support:
-
-- GitLab,
-- Azure Repos,
-- additional AI providers.
-
-These integrations should not require redesigning the central analysis responsibilities.
+The answer determines the practical value and priority of SQLite result caching.

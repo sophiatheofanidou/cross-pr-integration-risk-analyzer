@@ -2,413 +2,281 @@
 
 ## Purpose
 
-This document defines the concrete scope and implementation boundaries of the first portfolio version of the Cross-PR Integration Risk Analyzer.
+This document defines the smallest complete portfolio version of the Cross-PR Integration Risk Analyzer.
 
-The objective is to build a complete and technically defensible end-to-end workflow within a limited implementation scope.
+The MVP must demonstrate the product's core value end to end: automatically discover approved pull-request pairs that have a concrete structural relationship, use focused AI reasoning to identify plausible non-textual integration risks, and present an explainable reviewer-facing result.
 
-The MVP is not intended to prove the optimal candidate-discovery strategy or provide production-grade semantic analysis.
-
-More extensive cost, recall and scalability benchmarking is considered future work.
+It is not a production-scale optimization exercise and does not attempt exhaustive detection.
 
 ---
 
-## MVP Goals
-
-The MVP should demonstrate that the system can:
-
-- retrieve a set of approved pull requests from a real source-control platform,
-- discover technically related pull request pairs without invoking AI for every possible pair,
-- use structural code analysis to improve candidate evidence,
-- construct focused repository context,
-- use tiered AI reasoning to identify plausible cross-PR integration risks,
-- avoid unnecessary repeated AI cost through caching,
-- present explainable reviewer-facing findings through a usable interface.
-
----
-
-## End-to-End MVP Workflow
+## MVP Workflow
 
 ```text
-GitHub Repository
-       ↓
-Eligibility Selection
-       ↓
-Candidate Discovery
-       ↓
-Repository Context Retrieval
-       ↓
-AI Risk Analysis
-       ↓
-Risk Report
-       ↓
-Angular Dashboard
+GitHub Repository and Target Branch
+                ↓
+Approved Pull Request Retrieval
+                ↓
+Unique Pull Request Pairs
+                ↓
+TypeScript Structural Candidate Discovery
+                ↓
+Focused Pair Analysis Input
+                ↓
+Single Claude Risk Assessment
+                ↓
+Reviewer Dashboard
 ```
 
-The detailed workflow is:
+The workflow is:
 
-1. The user selects a GitHub repository.
-2. The system retrieves eligible pull requests.
-3. Eligible PRs are grouped by target branch.
-4. Candidate Discovery generates unique PR pairs.
-5. Basic deterministic evidence is evaluated.
-6. Tree-sitter enriches supported files with structural evidence.
-7. Pairs with meaningful technical evidence become Candidate Pairs.
-8. Focused Context Bundles are constructed.
-9. Existing cached AI results are reused when valid.
-10. Remaining candidates are evaluated by the screening model.
-11. Suspicious or uncertain candidates are escalated to detailed AI analysis.
-12. Findings are presented in the Angular dashboard.
+1. The user provides a GitHub repository and target branch.
+2. The backend retrieves open, non-draft, actively approved pull requests.
+3. Every unordered pair targeting that branch is generated once.
+4. Changed TypeScript files are analyzed structurally.
+5. Pairs with at least one Technical Term Match become Candidate Pairs.
+6. Relevant change hunks and enclosing snippets are prepared for each candidate.
+7. Claude performs one structured risk assessment per Candidate Pair with sufficient focused input.
+8. The Angular interface displays findings, evidence and warnings.
 
 ---
 
-# Technology Choices
+## Technology Choices
 
 | Area | MVP Choice |
 |---|---|
 | Frontend | Angular |
 | Backend | Node.js + TypeScript |
 | Test Runner | Vitest |
-| Runtime Validation | Zod |
-| Source Control | GitHub |
-| Source-Control API | GitHub REST API |
+| Runtime Validation | Zod at external-data boundaries |
+| Source Control | GitHub REST API |
 | Structural Parsing | Tree-sitter |
-| Structural Languages | TypeScript and C# |
+| Analyzed Source Language | TypeScript `.ts` files |
 | AI Provider | Claude |
-| AI Strategy | Screening tier + detailed-analysis tier |
-| Result Cache | SQLite |
-| Repository Context | Focused deterministic retrieval |
-| RAG | Not included |
-| Vector Database | Not included |
+| AI Strategy | One structured assessment per Candidate Pair with sufficient focused input |
+| Persistent Result Cache | Deferred |
+| Prompt Caching | Deferred |
+| Repository Context | Focused change hunks and source snippets |
 
-These are implementation choices for the first version rather than permanent architectural constraints.
+These choices define the first implementation, not permanent architectural constraints.
 
 ---
 
-# Pull Request Scope
+## Pull Request Scope
 
 The MVP analyzes pull requests that:
 
 - are open,
 - are not drafts,
-- are approved,
-- target the selected branch.
+- target the selected branch,
+- have at least one active approval,
+- have no active changes-requested decision.
 
-Pull requests that have not yet reached approved state are outside the primary analysis workflow.
-
-For the GitHub MVP, eligibility uses the current effective review state:
-
-- review comments do not override an approval decision,
-- an active changes-requested decision makes a pull request ineligible,
-- and at least one active approval is required.
+Review comments do not replace a reviewer's latest decisive approval or changes-requested state.
 
 ---
 
-# Source-Content Retrieval Scope
+## Candidate Discovery Scope
 
-The GitHub MVP retrieves:
+The MVP parses supported changed files once per pull request and records:
 
-- pull request metadata and effective review state,
-- changed-file metadata,
-- available diff hunks,
-- selected repository file versions when required by structural analysis or focused context retrieval.
+- technical terms associated with changed ranges,
+- structural occurrences throughout each resulting changed file,
+- source ranges needed for focused snippets.
 
-Repository file contents are retrieved on demand rather than by downloading the complete repository.
-
-A provider-supplied patch is the preferred initial representation of a file change.
-
-When a patch is unavailable or insufficient for required structural or context analysis, the MVP may retrieve bounded before-and-after versions of the selected text file and construct the required diff locally.
-
-This fallback is limited to relevant files and does not introduce repository-wide retrieval or indexing.
-
-Binary, generated, unsupported or oversized files:
-
-- may contribute file-level evidence,
-- are not passed to Tree-sitter,
-- are not automatically included in AI context,
-- and produce an explicit coverage limitation when their exclusion may affect the analysis.
-
-Concrete file-size and content limits are implementation configuration.
-
----
-
-# Candidate Discovery Scope
-
-Candidate Discovery includes a small set of explainable technical evidence.
-
-### Basic Evidence
-
-- same changed file,
-- shared relevant identifier,
-- identifier changed by one PR appearing in a file modified by another PR.
-
-### Structural Evidence
-
-Tree-sitter is used for:
-
-- TypeScript,
-- C#.
-
-Structural information includes:
-
-- function/method definitions,
-- classes,
-- calls/references,
-- enclosing code structures.
-
-### Required MVP Evidence Rules
-
-The MVP implements exactly these five Candidate Discovery evidence rules:
-
-- `SAME_CHANGED_FILE`,
-- `SHARED_IDENTIFIER`,
-- `CHANGED_IDENTIFIER_IN_OTHER_CHANGED_FILE`,
-- `SHARED_CHANGED_SYMBOL`,
-- `MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR`.
-
-The MVP does not implement a numeric Interaction Score.
-
-A pair becomes a Candidate Pair when at least one configured meaningful evidence rule matches.
-
----
-
-# Tree-sitter Scope
-
-The MVP uses Tree-sitter as lightweight structural parsing.
-
-It does not attempt full semantic symbol resolution.
-
-The implementation does not need to correctly resolve every case involving:
-
-- imports,
-- aliases,
-- overloads,
-- inheritance,
-- dynamic dispatch.
-
-The objective is to generate useful candidate evidence, not build a complete compiler or static-analysis platform.
-
-Unsupported file types fall back to the basic language-independent Candidate Discovery rules.
-
----
-
-# Repository Context Scope
-
-Context Retrieval focuses on:
-
-- relevant diff hunks,
-- enclosing functions or methods,
-- relevant call/reference snippets,
-- Candidate Discovery evidence,
-- selected directly related code.
-
-The system does not automatically send complete repositories to the AI.
-
-Large unrelated files and repository-wide historical information are outside the initial scope.
-
----
-
-# AI Scope
-
-The MVP uses two AI analysis roles.
-
-## Screening
-
-Every uncached Candidate Pair is first evaluated by a cheaper model.
-
-Output:
+For every unordered pair, it evaluates both directions:
 
 ```text
-DISMISS
+PR A changed terms ∩ PR B occurrences
+PR B changed terms ∩ PR A occurrences
 ```
 
-or:
+Each intersection produces a Technical Term Match:
 
 ```text
-ESCALATE
+Technical Term Match
+├── Technical Term
+├── Changed-Region Location
+└── Matching-Occurrence Location
 ```
 
-with a short rationale.
+A pair becomes a Candidate Pair when:
 
-Uncertain cases are escalated.
+```text
+technicalTermMatches.length > 0
+```
 
-## Detailed Analysis
+The contract has no fixed evidence-rule ID and no separately stored candidate boolean.
 
-Escalated pairs are evaluated by a stronger model.
+Same-file and cross-file matches use the same shape. The matching occurrence may be outside the other pull request's patch, but it must be inside the resulting content of a file changed by that pull request.
 
-Detailed output includes:
+Tree-sitter provides syntax, not complete semantic symbol resolution. Matching names remain evidence for AI investigation rather than proof of dependency.
 
-- possible integration-risk scenario,
+---
+
+## Supported File Cases
+
+The first implementation structurally analyzes:
+
+- added `.ts` files with an available resulting file,
+- modified `.ts` files with an available resulting file and changed ranges obtained from either a usable provider patch or a bounded local diff between the immutable change-base and head versions.
+
+The MVP reports a warning and skips structural matching for:
+
+- deleted files,
+- renamed files,
+- modified files for which neither the provider patch nor bounded local reconstruction can provide reliable changed ranges,
+- unavailable or oversized content,
+- binary or non-UTF-8 content,
+- malformed source that cannot be parsed reliably,
+- source languages other than the supported MVP language.
+
+Provider patches are preferred. Local reconstruction is performed only for the selected modified file when its patch is missing or insufficient; it does not clone, diff or index the complete repository. Unsupported cases reduce coverage but do not silently become “no relationship found”.
+
+---
+
+## Focused Pair Analysis Input
+
+For each Candidate Pair, the backend prepares:
+
+- concise PR metadata,
+- Technical Term Matches,
+- relevant provider or locally reconstructed change hunks,
+- enclosing snippets around changed regions,
+- bounded snippets around matching occurrences,
+- analysis warnings relevant to either pull request in the pair.
+
+The builder selects match-centered hunks and snippets before applying input limits; it does not blindly truncate a complete patch. The complete repository is never sent to Claude. The implementation reuses file contents and syntax ranges already obtained during Candidate Discovery.
+
+Claude is invoked when at least one Technical Term Match retains its relevant change hunk and both required source contexts. If no match satisfies that minimum, the Candidate Pair remains visible with an assessment-not-run warning and no AI risk status is produced.
+
+---
+
+## AI Scope
+
+Each Candidate Pair with sufficient focused input receives one Claude assessment.
+
+The validated result contains:
+
+- `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
 - explanation,
-- supporting evidence,
-- inferred assumption,
+- changed assumption when a risk is identified,
 - confidence,
-- severity,
-- recommended reviewer check.
+- severity when a risk is identified,
+- recommended reviewer check when a risk is identified.
 
-Specific model names remain configuration choices.
+The AI distinguishes deterministic evidence from semantic inference. It does not confirm defects or make merge decisions.
 
----
-
-# Caching Scope
-
-The MVP includes two different caching mechanisms where supported.
-
-## Result Caching
-
-The application stores previous analysis results using a key based on the analyzed PR versions and relevant analysis configuration.
-
-If the same unchanged analysis is requested again, the stored result is returned without another AI request.
-
-## Prompt Caching
-
-When supported by the selected AI provider, repeated stable prompt content may be reused across related analyses to reduce repeated input cost.
-
-Prompt caching is an optimization rather than a dependency of the core workflow.
+The MVP does not include a separate screening model.
 
 ---
 
-# UI Scope
+## API and UI Scope
 
-The Angular interface should allow the user to:
+The backend exposes one simple analysis operation that accepts a repository and target branch and returns the completed report synchronously.
 
-- select or provide a repository,
-- select the target branch,
-- start an analysis,
-- view the number of eligible PRs and Candidate Pairs,
-- view identified cross-PR findings,
-- inspect the evidence connecting each pair,
-- inspect severity and confidence,
-- inspect the recommended reviewer check.
+The MVP does not require background jobs, distributed queues, persisted analysis status or continuous monitoring.
 
-Filtering by reviewer, author or responsibility may be included if implementation time permits, but it is not required for the first complete workflow.
+The Angular interface provides:
+
+- repository and branch input,
+- an analysis action,
+- eligible-PR and Candidate-Pair counts,
+- risk results,
+- Technical Term Match evidence,
+- confidence and severity,
+- reviewer checks,
+- visible analysis warnings,
+- a clear empty state when no Candidate Pairs are found.
+
+Filtering, reviewer ownership views and advanced dashboards are deferred.
 
 ---
 
-# Explicit Non-Goals
+## Controlled Scenarios
+
+Controlled TypeScript scenarios are developed together with Candidate Discovery rather than added only after implementation.
+
+The scenario set should include:
+
+- a changed function signature and a call in another changed file,
+- a behavioural change associated with an enclosing function and a matching use by another PR,
+- a changed model or property and a matching occurrence in another changed file,
+- a matching occurrence outside the other PR's patch,
+- a missing or insufficient provider patch recovered through bounded local diff reconstruction,
+- a coincidental same-name relationship that AI should reject,
+- unrelated PRs that should not become a Candidate Pair,
+- unsupported or incomplete input that produces a warning,
+- a discovered pair with no viable focused input that does not invoke AI.
+
+These scenarios protect the product's core value and provide the final demonstration baseline.
+
+---
+
+## Explicit MVP Non-Goals
 
 The MVP does not include:
 
 - Git textual merge-conflict detection,
-- automatic merge decisions,
-- automatic PR approval or rejection,
-- build execution,
-- automated test execution,
-- full static-program analysis,
+- builds or test execution for analyzed pull requests,
+- automatic approval, rejection or merging,
+- lexical Candidate Discovery fallback,
+- additional structural languages,
 - complete semantic symbol resolution,
-- repository-wide symbol indexing,
-- RAG,
-- vector databases,
-- support for multiple source-control platforms,
-- support for multiple AI providers,
-- continuous repository monitoring,
-- production-grade authentication or billing.
+- deleted or renamed file structural analysis,
+- repository-wide indexing or RAG,
+- tiered AI analysis,
+- SQLite result caching,
+- provider prompt caching,
+- multiple source-control or AI providers,
+- asynchronous job infrastructure,
+- production authentication, billing or deployment infrastructure.
 
 ---
 
-# Cost-Efficiency Mechanisms
+## Success Criteria
 
-The MVP controls AI usage through:
+The MVP is successful when it can demonstrate that:
 
-```text
-Deterministic Candidate Discovery
-              ↓
-       Focused Context
-              ↓
-       Cheap Screening
-              ↓
- Detailed Analysis only if needed
-```
+- real approved PRs can be retrieved from GitHub,
+- TypeScript Technical Term Matches reduce the possible PR-pair set,
+- a critical cross-file occurrence outside the other PR's patch is found,
+- a modified file with a missing or insufficient provider patch can still participate through bounded local diff reconstruction,
+- Claude identifies a designed integration-risk scenario that is not an ordinary Git conflict,
+- Claude dismisses a structurally related but semantically unrelated pair,
+- evidence and reviewer checks are understandable in the UI,
+- unsupported analysis is visible rather than silently ignored,
+- a completed analysis with no Candidate Pairs is presented as a valid result,
+- the complete workflow runs without repository-wide retrieval.
 
-Additional savings come from:
-
-- result caching,
-- prompt caching when supported,
-- ignoring irrelevant/generated files,
-- reusing structural-analysis results.
-
-The MVP does not claim a fixed percentage of candidate reduction or a fixed per-repository AI cost.
+The goal is a credible end-to-end workflow, not exhaustive accuracy or production scalability.
 
 ---
 
-# Canonical MVP Terminology
+## Planned Future Improvements
 
-The following terms are used consistently across the MVP design and implementation:
+The following ideas remain part of the intended evolution of the project. They are deferred, not rejected.
 
-| Term | Canonical meaning | MVP example |
-|---|---|---|
-| Candidate Discovery Evidence Rule | A deterministic check that can establish a meaningful technical relationship between two pull requests. | Both pull requests modify the same file. |
-| Evidence Rule ID | The stable identifier of the evidence rule that matched. | `SAME_CHANGED_FILE` |
-| Candidate Evidence | The structured record produced when an evidence rule matches. | An Evidence Rule ID, Technical Resource and locations in both pull requests. |
-| Technical Resource | The file path, identifier or structural symbol connected by Candidate Evidence. | `processPayment` |
-| File Change Type | How a changed file was affected. | `ADDED`, `MODIFIED`, `DELETED` or `RENAMED` |
-| Retrieval Reason | Why a repository context snippet was included in a Context Bundle. | Contains the method definition modified by PR A. |
-| Coverage Limitation | Relevant analysis coverage that is missing, unavailable or unsupported. It may be file-specific or apply to the wider analysis context. | An oversized relevant file was excluded from structural analysis. |
-| Detailed Analysis Result | The structured outcome of Detailed Analysis with one of two Risk Status values. | `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED` |
-| Risk Finding | The finding details present only when a Detailed Analysis Result has the `RISK_IDENTIFIED` status. | Explanation, supporting evidence, inferred assumption, confidence, severity and Recommended Reviewer Check. |
-| Recommended Reviewer Check | What the human reviewer should verify. It does not perform or prescribe an automatic pull-request action. | Verify whether PR B still relies on the previous method contract. |
+### Tiered AI Analysis
 
-The complete allowed set of five Evidence Rule IDs is defined in **Required MVP Evidence Rules**.
+Add a cheaper screening model before detailed analysis when measured Candidate Pair volume shows that one full assessment per pair is too expensive.
 
-Example Candidate Evidence:
+### SQLite Result Caching
 
-```text
-Evidence Rule ID:
-MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR
+Persist validated results across application runs so unchanged PR revisions and unchanged analysis inputs do not repeat paid AI calls.
 
-Technical Resource:
-processPayment
+### Provider Prompt Caching
 
-PR A Location:
-src/payments/payment.service.ts
+Reuse stable prompt prefixes when the selected provider supports caching and measurements show repeated input with meaningful cost.
 
-PR B Location:
-src/checkout/checkout.service.ts
-```
+### Broader Candidate Coverage
 
-Detailed Analysis Result relationship:
+Add deleted and renamed file analysis, more structural languages and possibly a measured lexical fallback.
 
-```text
-Detailed Analysis Result
-├── RISK_IDENTIFIED
-│   └── Risk Finding
-└── NO_RISK_IDENTIFIED
-    └── Explanation
-```
+### Richer Context and Analysis
 
----
+Investigate symbol resolution, repository indexes, semantic retrieval, RAG, agentic exploration, multiple findings per pair and additional providers.
 
-# Success Criteria
+### Operational Evolution
 
-The MVP is considered successful if it demonstrates the complete workflow and can:
-
-- retrieve approved PRs from GitHub,
-- generate Candidate Pairs using deterministic evidence,
-- produce structural evidence from TypeScript and C# examples,
-- identify designed cross-PR risks that are not ordinary Git conflicts,
-- dismiss unrelated Candidate Pairs through screening,
-- generate detailed explainable findings for escalated pairs,
-- reuse cached results when PRs remain unchanged,
-- reuse selected file contents across Candidate Discovery and Context Retrieval within one analysis run,
-- handle missing patches without silently treating them as empty changes,
-- continue gracefully when binary or oversized content cannot be analyzed,
-- expose material analysis-coverage limitations to the reviewer,
-- present the findings clearly in the Angular UI.
-
-The primary success criterion is a credible and demonstrable engineering workflow rather than exhaustive detection accuracy.
-
----
-
-# Future Work
-
-After the portfolio MVP is complete, future evaluation may investigate:
-
-- Java and Kotlin Tree-sitter support,
-- richer symbol resolution,
-- repository-wide indexing,
-- agentic Candidate Discovery,
-- different AI model tiers,
-- deterministic versus AI-first discovery,
-- cost versus recall benchmarking,
-- additional Git providers,
-- additional AI providers,
-- continuous/incremental analysis.
+Add asynchronous analysis jobs, persistent run history, continuous monitoring and richer reviewer dashboards when the workflow moves beyond a local portfolio demonstration.

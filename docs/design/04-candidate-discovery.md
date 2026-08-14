@@ -4,73 +4,46 @@
 
 Candidate Discovery identifies pull request pairs that deserve deeper contextual and AI-assisted analysis.
 
-It receives pull requests that have already passed Eligibility Selection and examines the technical relationship between their changes.
+It receives pull requests that have already passed Eligibility Selection and asks a deliberately narrow question:
 
-The stage does **not** determine whether a real integration risk exists.
+> Do the changes in these two pull requests contain a matching technical term that gives the system a concrete reason to inspect them together?
 
-Instead, it answers a narrower question:
+Candidate Discovery does not determine whether an integration risk exists. It does not classify a change as a contract, parameter, behaviour, model or state incompatibility. Those are semantic conclusions for AI Risk Analysis.
 
-> Is there enough objective technical relationship between these two pull requests to justify deeper analysis?
+Its responsibility is to reduce the possible PR-pair set, identify the relevant files and locations, and preserve factual evidence explaining why each selected pair receives deeper analysis.
 
-This reduces unnecessary AI calls while preserving an explainable discovery process.
+---
+
+## Language Independence
+
+Candidate Discovery is language-aware but not tied to one programming language.
+
+Each supported language is handled through a replaceable structural analyzer. The analyzer understands how that language represents declarations, references, named structures and source locations. Adding another language analyzer extends coverage without changing the Candidate Pair or Technical Term Match contracts.
+
+The languages supported by a particular release belong in that release's specification and implementation plan, not in the general architecture.
+
+The design does not require:
+
+- language-agnostic lexical matching,
+- deterministic risk classification,
+- complete semantic symbol resolution,
+- repository-wide retrieval or indexing,
+- or a numeric Interaction Score.
 
 ---
 
 ## Inputs
 
-Candidate Discovery receives normalized information for each eligible pull request.
+Candidate Discovery receives normalized information for each eligible pull request, including:
 
-Relevant inputs include:
+- pull request ID,
+- target branch,
+- immutable change-base and head revisions,
+- changed file paths and change types,
+- provider-supplied patches when available,
+- bounded resulting file contents when structural analysis requires them.
 
-- Pull Request ID
-- Target branch
-- Changed file paths
-- File change type
-- Diff / patch
-- Selected changed file contents where structural analysis is required
-
-Pull requests have already been filtered by the Eligibility Selection stage.
-
----
-
-## Patch and Source-Content Availability
-
-Changed-file metadata and available diff hunks are the initial change inputs to Candidate Discovery.
-
-A provider-supplied patch is treated as a useful representation of the change, but it is not assumed to contain sufficient source context for every structural-analysis operation.
-
-When structural analysis requires complete syntactic context, Candidate Discovery may request selected file versions through the Source Control Integration.
-
-For a bounded supported text file, the implementation may retrieve the file versions before and after the pull-request change and construct a complete local diff when the provider-supplied patch is unavailable or insufficient.
-
-In this flow, `before` means the immutable comparison-base revision used to identify what the pull request introduces, and `after` means the pull request's immutable head revision. It does not mean comparing the current target-branch tip directly with the feature-branch tip, and it does not simulate the repository state after a merge.
-
-```mermaid
-flowchart TD
-    A[Changed-file metadata] --> B{Provider patch available?}
-    B -->|Yes| C{Patch sufficient for the required operation?}
-    C -->|Yes| D[Use provider patch]
-    B -->|No| E[Request selected before and after file versions]
-    C -->|No| E
-    E --> F{Both versions available and safely supported?}
-    F -->|Yes| G[Construct a local diff]
-    F -->|No| H[Continue supported rules and preserve a coverage limitation]
-```
-
-Retrieved file contents and locally constructed diffs are deterministic analysis inputs. They are not AI-generated context.
-
-Content already retrieved during the current analysis run should be reused where practical.
-
-If selected source content cannot be retrieved or safely processed:
-
-- basic evidence rules continue to operate where their required inputs remain available,
-- structural evidence is not produced for the unavailable content,
-- the absence of structural evidence is not interpreted as proof that no relationship exists,
-- and the limitation is preserved as analysis-coverage information.
-
-Binary, unsupported or oversized files are not passed to Tree-sitter. They may still participate in file-level evidence such as `SAME_CHANGED_FILE`.
-
-Analysis-coverage information is diagnostic metadata. It does not introduce an additional Candidate Discovery evidence rule.
+Only files supported by an available structural analyzer participate in technical-term matching. Other relevant files may produce analysis warnings, but they do not produce speculative lexical matches.
 
 ---
 
@@ -78,319 +51,171 @@ Analysis-coverage information is diagnostic metadata. It does not introduce an a
 
 Eligible pull requests targeting the same branch are grouped together.
 
-For each group, every unique pair is considered once.
+For each group, every unordered pair is considered exactly once. The pair `{A, B}` is the same pair as `{B, A}`.
 
-For **N** eligible pull requests, the total number of possible pairs is:
+For **N** eligible pull requests, the number of possible pairs is:
 
 ```text
-N × (N - 1) / 2
+N x (N - 1) / 2
 ```
 
 For example:
 
 ```text
-30 PRs → 435 possible pairs
+30 PRs -> 435 possible pairs
 ```
 
-Pair generation itself is inexpensive and deterministic.
-
-Candidate Discovery exists to prevent all of these pairs from requiring AI analysis.
+Pair generation is deterministic. Candidate Discovery exists to prevent every possible pair from requiring AI analysis.
 
 ---
 
-## Discovery Strategy
+## Candidate Selection Criterion
 
-Candidate Discovery combines two complementary forms of evidence:
+A possible PR pair becomes a Candidate Pair when structural analysis produces at least one Technical Term Match.
+
+A Technical Term Match exists when the analysis:
+
+1. associates a relevant named technical term with a changed region in one pull request, and
+2. finds the same named structural term in the resulting content of a supported file changed by the other pull request.
+
+The matching locations may be:
+
+- in the same file or in different files,
+- in changed or unchanged regions of the other pull request's resulting changed file.
+
+Same-file location is therefore context, not a separate selection criterion.
+
+The pair is unordered, but match collection evaluates the relationship in both directions:
 
 ```text
-Candidate Discovery
-
-├── Basic Technical Evidence
-│
-└── Structural Code Evidence
+PR A changed terms -> PR B resulting changed files
+PR B changed terms -> PR A resulting changed files
 ```
 
-Basic evidence works without understanding the programming language.
+The direction explains which location supplied the changed-region term and which supplied the matching occurrence. It does not create a different kind of Candidate Pair.
 
-Structural evidence provides richer information when a supported language analyzer is available.
+Selection is derived from the collection:
 
-Both forms of evidence produce factual observations rather than risk predictions.
+```text
+isCandidate = technicalTermMatches.length > 0
+```
+
+The model does not store a fixed rule ID or a separate boolean because neither contains information beyond the matches themselves.
 
 ---
 
-## Basic Technical Evidence
+## Technical Term
 
-### Same Changed File
+A technical term is a relevant name identified through the source language's syntax and used to connect two pull-request changes. It is not an arbitrary repeated word.
 
-Two pull requests modify the same file.
+Examples may include names of:
 
-```text
-SAME_CHANGED_FILE
-```
-
-Example:
-
-```text
-PR A → src/payments/payment.service.ts
-PR B → src/payments/payment.service.ts
-```
-
-This does not mean the changes conflict.
-
-It only indicates that both pull requests affect the same technical resource.
-
----
-
-### Shared Relevant Identifier
-
-A relevant technical identifier appears in changed code from both pull requests.
-
-```text
-SHARED_IDENTIFIER
-```
-
-Possible identifiers include:
-
-- function or method names,
-- class names,
-- model names,
-- configuration keys,
-- API-related identifiers.
-
-Common language keywords and obvious noise should be ignored.
-
-Lexical matching is intentionally treated as supporting evidence rather than proof that two symbols represent the same semantic entity.
-
----
-
-### Changed Identifier Appears in a File Modified by the Other PR
-
-An identifier affected by one pull request appears in the content of a file modified by another pull request.
-
-```text
-CHANGED_IDENTIFIER_IN_OTHER_CHANGED_FILE
-```
-
-Example:
-
-```text
-PR A
-changes processPayment
-
-PR B
-modifies checkout.service.ts
-
-checkout.service.ts contains:
-processPayment(...)
-```
-
-This allows Candidate Discovery to connect pull requests that modify different files.
-
----
-
-## Structural Code Analysis
-
-Basic text matching cannot distinguish between different syntactic roles.
-
-For example, the text:
-
-```text
-processPayment
-```
-
-could represent:
-
-- a function definition,
-- a method call,
-- a variable,
-- a comment,
-- or a string.
-
-Structural analysis provides additional information about what the code actually represents syntactically.
-
----
-
-## Tree-sitter
-
-The initial structural-analysis implementation uses **Tree-sitter**.
-
-Tree-sitter is a local source-code parsing library.
-
-It does not send code to an external service and does not require AI or token usage.
-
-Its role is to transform source code into a structured syntax tree.
-
-Conceptually:
-
-```text
-Source File
-     ↓
-Detect Language
-     ↓
-Load Language Grammar
-     ↓
-Tree-sitter Parser
-     ↓
-Syntax Tree
-     ↓
-Language-specific Query
-     ↓
-Relevant Structural Facts
-```
-
----
-
-## Language Grammars
-
-Tree-sitter uses a grammar for each programming language.
-
-A grammar describes the syntactic structure of that language and allows Tree-sitter to recognize constructs such as:
-
-- classes,
 - functions,
 - methods,
-- calls,
-- parameters,
-- identifiers.
+- classes,
+- interfaces and types,
+- variables and parameters,
+- properties,
+- and matching calls or references.
 
-The analyzer does not implement these parsers itself.
+Keywords, comments and ordinary string contents do not become technical terms merely because the same text appears elsewhere. Each structural analyzer decides which syntax nodes supply declaration or reference names and which names are associated with a changed region. These extraction details stay internal and may evolve without changing the shared evidence contract.
 
-A language implementation provides the appropriate Tree-sitter grammar.
+A change to a parameter type, parameter count or function behaviour can therefore be associated with the surrounding function name and with relevant names inside the changed syntax. Candidate Discovery records those correlations; AI Risk Analysis decides what the change means.
 
----
-
-## Tree-sitter Queries
-
-The complete syntax tree contains much more information than Candidate Discovery needs.
-
-Small language-specific Tree-sitter queries select only the relevant syntax nodes.
-
-For example, a query may capture:
-
-```text
-method definition
-function definition
-class definition
-function/method call
-```
-
-The output is normalized into a common representation so the rest of Candidate Discovery does not need to understand language-specific syntax.
-
-Conceptually:
-
-```text
-TypeScript ─┐
-            │
-C# ─────────┼──> Structural Analyzer
-            │
-Other ──────┘
-                  ↓
-          Common Structural Facts
-```
+The technical term is a deterministic correlation key. Matching a name does not prove that two occurrences resolve to the same semantic symbol.
 
 ---
 
-## Structural Evidence
+## Language-Aware Structural Analysis
 
-Structural information allows stronger candidate evidence than plain text matching.
+A structural analyzer parses bounded source locally. It does not send code to an external service and does not use AI tokens.
 
-### Shared Changed Symbol
-
-Both PRs structurally affect a symbol with the same relevant name.
-
-```text
-SHARED_CHANGED_SYMBOL
-```
-
----
-
-### Modified Definition Referenced by the Other PR
-
-One pull request modifies a function or method definition while another contains a matching call or reference in its changed code.
-
-```text
-MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR
-```
+The analyzer uses pull-request change ranges together with the parsed syntax tree to identify relevant named structures associated with the change. This includes cases where the name itself is outside the changed lines.
 
 Example:
 
-```text
-PR A
-modifies definition:
-processPayment
-
-PR B
-adds call:
-processPayment(...)
+```diff
+function processPayment(amount) {
+-  return charge(amount);
++  return authorizeAndCapture(amount);
+}
 ```
 
-This is stronger evidence than simply observing that both diffs contain the same string.
+The changed lines do not contain `processPayment`. Structural analysis can nevertheless associate the change with the enclosing `processPayment` function.
 
----
-
-## What Tree-sitter Does Not Provide
-
-Tree-sitter provides **syntactic and structural information**.
-
-It does not provide complete semantic symbol resolution.
-
-For example, identifying:
+Candidate Discovery may then find a matching structural occurrence in a file changed by another pull request:
 
 ```text
-processPayment(...)
+result = processPayment(total)
 ```
 
-as a method call does not always prove which exact method definition it refers to.
+This produces factual evidence that the pair deserves deeper analysis. It does not determine whether the behaviour, parameters or contract are incompatible.
 
-Complete resolution may require understanding:
+Structural parsing provides syntactic structure, not complete semantic resolution. Depending on the language and analyzer, it may not reliably resolve every case involving:
 
-- imports,
+- imports and re-exports,
 - aliases,
 - scopes,
 - overloads,
 - inheritance,
 - dynamic dispatch.
 
-Candidate Discovery intentionally does not solve all of these problems.
-
-Its goal is only to identify pairs worth deeper analysis.
-
-The AI stage later evaluates whether the structural relationship is actually meaningful.
+Same-named constructs may therefore be unrelated. AI Risk Analysis evaluates that uncertainty using focused context.
 
 ---
 
-## Why Structural Analysis Is Useful
+## Same-File and Cross-File Matching
 
-Structural analysis provides several advantages:
+Technical-term matching does not distinguish same-file and cross-file relationships as separate categories.
 
-- more precise evidence than raw text matching,
-- no AI/token cost,
-- deterministic behaviour,
-- reusable parsing logic,
-- extensibility across programming languages,
-- better input for later AI reasoning.
+```text
+PR A changed region -> technical term processPayment
+PR B relevant occurrence -> technical term processPayment
+```
 
-At the same time, keeping structural analysis limited to candidate discovery avoids turning the system into a complete static analyzer.
+The same kind of match is produced whether both locations are in one file or each location is in a different file.
+
+File paths and source locations remain part of the match so later stages can retrieve the correct context.
 
 ---
 
-## Candidate Selection
+## Resulting-Content Search
 
-The initial design does not require a weighted Interaction Score.
+Searching only the other pull request's patch is insufficient.
 
-A pair becomes a Candidate Pair when at least one configured technical evidence rule provides a meaningful relationship.
+The important cross-PR scenario may contain the matching occurrence in an unchanged region of a file that the other pull request modifies:
 
-The evidence responsible for selection is preserved.
+```text
+PR A changes processPayment.
 
-This avoids introducing arbitrary numeric weights before there is evidence that such ranking is necessary.
+PR B changes another region of a file that still contains processPayment.
+```
 
-If candidate volume later becomes too large, ranking or weighting can be introduced as an optimization.
+Candidate Discovery therefore examines the bounded resulting content of relevant supported files at the other pull request's immutable `headRevision`.
+
+For a modified file, a usable provider patch is the preferred source of changed ranges on the side whose change is being analyzed. If the patch is unavailable or cannot provide reliable changed ranges, Candidate Discovery retrieves bounded versions of that selected file at the pull request's immutable `changeBaseRevision` and `headRevision` and reconstructs a local line diff. The file is skipped with an explicit warning only when neither path can provide reliable changed ranges and resulting content.
+
+For an added file, the complete resulting content is the changed range and no patch or local reconstruction is required.
+
+This is selected-file retrieval only. It does not download, parse or index the complete repository.
+
+Retrieved content is reused within the current analysis run where practical.
+
+---
+
+## Changed-File Support
+
+Each release defines which change types its available analyzers support. Unsupported cases are reported explicitly rather than silently interpreted as having no match.
+
+The minimum useful implementation supports added and modified source files. Modified-file support includes bounded local before/after diff reconstruction when the provider patch is unavailable or insufficient. Deleted-file analysis and complex rename handling remain optional extensions rather than requirements of the shared match model.
+
+These cases do not introduce different match categories.
 
 ---
 
 ## Evidence Model
 
-Every selected pair contains structured Evidence items.
+Every selected pair preserves one or more Technical Term Matches.
 
 Conceptually:
 
@@ -398,47 +223,77 @@ Conceptually:
 Candidate Pair
 ├── Pull Request A
 ├── Pull Request B
-└── Evidence[]
-    ├── Evidence Rule ID
-    ├── Technical Resource
-    ├── PR A Location
-    └── PR B Location
+└── Technical Term Matches[]
+    ├── Technical Term
+    ├── Changed-Region Location
+    └── Matching-Occurrence Location
 ```
 
 Example:
 
 ```text
-Evidence Rule ID:
-MODIFIED_DEFINITION_REFERENCED_BY_OTHER_PR
-
-Technical Resource:
+Technical Term:
 processPayment
 
-PR A:
-src/payments/payment.service.ts
+Changed-Region Location:
+src/payments/payment.service
 
-PR B:
-src/checkout/checkout.service.ts
+Matching-Occurrence Location:
+src/checkout/checkout.service
 ```
 
-Evidence explains **why the pair was selected**.
+A match explains why the pair was selected. It does not claim that:
 
-It does not claim that a risk exists.
+- the two occurrences are definitively the same semantic symbol,
+- one pull request depends on the other,
+- the changes are incompatible,
+- or an integration risk exists.
+
+Duplicate matches for the same technical term and locations are removed deterministically. Useful source ranges already identified during structural analysis may be retained so focused context retrieval does not need to rediscover them.
+
+---
+
+## Analysis Warnings
+
+Candidate Discovery must distinguish:
+
+```text
+analysis completed and no match was found
+```
+
+from:
+
+```text
+the relevant structural analysis could not be completed
+```
+
+Material warnings include:
+
+- changed files without an available structural analyzer,
+- unavailable content,
+- binary or unsupported content,
+- oversized content,
+- missing or insufficient patch information when local reconstruction also cannot provide reliable changed ranges,
+- malformed source that cannot provide reliable structural facts.
+
+Warnings are diagnostic metadata, not candidate evidence. Candidate Discovery returns them separately from Candidate Pairs so incomplete analysis is not silently represented as an unrelated pair.
+
+Each warning identifies the affected pull request and, when applicable, the affected file and reason. This allows later stages to include only warnings relevant to the pair being assessed.
 
 ---
 
 ## Output
 
-Candidate Discovery produces:
+Conceptually, Candidate Discovery produces:
 
 ```text
-Candidate Pair
-├── Pull Request A
-├── Pull Request B
-└── Evidence[]
+Candidate Discovery Result
+├── Candidate Pairs[]
+│   └── Technical Term Matches[]
+└── Analysis Warnings[]
 ```
 
-This output becomes the input to Repository Context Retrieval.
+This output becomes the input to Focused Analysis Input Preparation.
 
 ---
 
@@ -446,33 +301,34 @@ This output becomes the input to Repository Context Retrieval.
 
 Candidate Discovery is responsible for:
 
-- generating unique PR pairs,
-- identifying objective technical relationships,
-- performing structural analysis where supported,
+- generating unique same-target-branch PR pairs,
+- invoking the available bounded structural analyzers,
+- identifying Technical Term Matches,
 - selecting Candidate Pairs,
-- preserving the evidence that justified selection.
+- preserving relevant file locations,
+- reporting material analysis warnings.
 
 Candidate Discovery is not responsible for:
 
-- confirming integration risks,
-- understanding complete business behaviour,
-- performing complete semantic symbol resolution,
+- determining what kind of change occurred semantically,
+- confirming an integration risk,
+- proving semantic symbol identity,
 - assigning severity or confidence,
-- generating reviewer recommendations,
 - detecting Git textual merge conflicts,
-- executing builds or tests.
+- executing builds or tests,
+- analyzing the complete repository.
 
 ---
 
-## Future Evolution
+## Future Investigations
 
-Candidate Discovery may later evolve through:
+Future work may investigate:
 
-- additional language analyzers,
+- structural analyzers for additional languages,
+- a bounded lexical fallback for unsupported languages, but only if measured scenarios demonstrate useful recall without excessive noise,
+- deleted-file and richer rename analysis,
 - richer symbol resolution,
-- repository-wide structural indexes,
-- evidence ranking,
-- measured candidate thresholds,
-- agentic discovery strategies.
+- additional structurally recognized construct types,
+- measured cost-versus-recall improvements.
 
-These improvements can evolve without changing the responsibility of Candidate Discovery itself.
+These investigations do not change the current Candidate Pair and Technical Term Match contracts.

@@ -48,7 +48,7 @@ Provide a cost-aware, AI-assisted workflow that:
 1. automatically retrieves the relevant approved pull requests,
 2. reduces the pair search space using explainable deterministic evidence,
 3. retrieves only focused repository context,
-4. analyzes candidate pairs using tiered AI reasoning,
+4. analyzes candidate pairs using focused AI reasoning,
 5. produces a prioritized and explainable reviewer-facing report.
 
 The product value is not a new general-purpose reasoning model. It is the automation and standardization of a cross-PR review workflow that would otherwise require repeated manual discovery, prompting and comparison.
@@ -78,6 +78,8 @@ The project is NOT intended to:
 - Cost-aware AI usage
 - Deterministic processing where it adds clear value
 - Focused repository context rather than full-repository prompts
-- Graceful language support: generic fallback plus richer analysis where supported
+- Explicit language support through replaceable structural analyzers
 - Modular architecture
 - Enterprise-oriented workflow
+
+Cost optimizations such as tiered AI analysis, persistent result caching and provider prompt caching remain intentional future improvements. They should be introduced after the basic workflow provides measurements that justify their additional complexity.

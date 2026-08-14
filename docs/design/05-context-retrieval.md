@@ -1,269 +1,109 @@
-# Repository Context Retrieval
+# Focused Analysis Input
 
 ## Purpose
 
-Repository Context Retrieval prepares the information required to evaluate a selected Candidate Pair.
+Focused Analysis Input prepares enough information for AI Risk Assessment to understand a selected Candidate Pair without sending the complete repository.
 
-Candidate Discovery establishes that two pull requests have an objective technical relationship.
+Candidate Discovery already identifies the Technical Term Matches and source locations connecting the pull requests. This stage packages the relevant changes and nearby code for semantic reasoning.
 
-Repository Context Retrieval then asks:
-
-> What additional code context is useful for understanding that relationship?
-
-The goal is to provide enough relevant information for meaningful AI reasoning while avoiding unnecessary repository content and token usage.
+It is a separate responsibility, but it does not need to be a standalone retrieval subsystem in the MVP.
 
 ---
 
 ## Input
 
-Repository Context Retrieval receives:
+The input builder receives:
 
-- Candidate Pair
-- Pull Request A diff
-- Pull Request B diff
-- Candidate Discovery Evidence[]
-- Structural information produced during Candidate Discovery, when available
-- Access to selected repository file contents
+- a Candidate Pair,
+- its Technical Term Matches,
+- the relevant provider or locally reconstructed change hunks,
+- structural ranges and resulting file contents already obtained during Candidate Discovery,
+- analysis warnings relevant to either pull request in the pair.
 
-The stage does not independently decide which pull request pairs should be analyzed.
-
----
-
-## Source-Content Acquisition Boundary
-
-Repository Context Retrieval determines what additional source context is relevant to a Candidate Pair.
-
-The actual retrieval of repository contents is performed through the Source Control Integration. Repository Context Retrieval does not call provider-specific APIs directly.
-
-Content already retrieved during Candidate Discovery is reused when it satisfies the context request. The same file version should not be retrieved repeatedly within one analysis run without a specific reason.
-
-Available diff hunks remain the primary change context.
-
-When a diff hunk does not contain enough context to identify an enclosing function, method, class, definition or reference, Repository Context Retrieval may request the relevant bounded file version.
-
-The retrieved file is used locally to select the smallest useful context unit. Retrieving a file does not mean that the complete file is automatically included in the Context Bundle or sent to the AI.
-
-When relevant content is binary, oversized, unavailable or otherwise unsupported, the limitation is recorded explicitly. Missing content must not be silently represented as an absence of relevant code.
+It requests additional content through the Source Control Integration only when the approved MVP flow explicitly requires it. It never calls provider-specific APIs directly.
 
 ---
 
-## Retrieval Principles
+## MVP Context
 
-Repository context should be:
+For each relevant match, the MVP input may include:
 
-- relevant,
-- focused,
-- bounded,
-- explainable,
-- reusable.
+- the relevant provider or locally reconstructed hunk containing the changed region,
+- a relevant change hunk from the file containing the matching occurrence when useful,
+- the enclosing source snippet around the changed region,
+- the enclosing or bounded snippet around the matching occurrence,
+- the technical term and both locations,
+- concise pull-request metadata,
+- analysis warnings relevant to the pair and supplied source material.
 
-The retrieval strategy should follow the technical evidence that caused the pair to become a candidate rather than retrieve unrelated repository content.
-
----
-
-## Context Construction
-
-The base Context Bundle combines information from both pull requests with selected repository context.
-
-Conceptually:
-
-```text
-Candidate Pair
-      ↓
-Candidate Evidence
-      ↓
-Relevant Context Selection
-      ↓
-Context Bundle
-```
-
-The Context Bundle may contain:
-
-```text
-Context Bundle
-├── PR A metadata
-├── PR A relevant diff hunks
-├── PR B metadata
-├── PR B relevant diff hunks
-├── Candidate Evidence[]
-├── Relevant Code Context[]
-└── Coverage Limitations[]
-```
+Content already retrieved and parsed during Candidate Discovery is reused. The MVP does not build a repository index, perform semantic retrieval or explore arbitrary repository files.
 
 ---
 
-## Pull Request Changes
+## Selection and Bounds
 
-The diffs of both pull requests are the primary source of context.
+The builder first selects match-centered hunks and source snippets. It does not blindly truncate a complete patch and risk removing the evidence that caused the pair to be selected.
 
-The system should prefer relevant changed hunks rather than automatically sending every changed line when a pull request is very large.
+It then applies simple configurable limits to:
 
-Useful information includes:
+- selected hunk length,
+- snippet length,
+- total pair input size.
 
-- changed file path,
-- change type,
-- relevant diff hunk,
-- nearby changed code.
+An individual match may be omitted from the AI input when its critical change hunk or source snippets cannot be included reliably. The pair remains assessable when at least one Technical Term Match retains its changed-region context, matching-occurrence context and relevant change representation. Omitted material produces a visible warning.
 
----
+If no match satisfies that minimum, the Candidate Pair remains in the discovery result but the AI assessment is not invoked. The reviewer sees that the pair was discovered and why its assessment could not be prepared; missing input is never converted into `NO_RISK_IDENTIFIED`.
 
-## Context Derived from Candidate Evidence
-
-The evidence rule ID determines what additional context is useful.
-
-### Same Changed File
-
-If both PRs modify the same file, relevant context may include:
-
-- both changed regions,
-- their enclosing functions or methods,
-- nearby code when required to understand the relationship.
-
----
-
-### Shared Identifier
-
-If both PRs contain the same relevant identifier, context may include:
-
-- the relevant occurrences,
-- enclosing code structures,
-- the surrounding changed hunks.
-
----
-
-### Modified Definition Referenced by the Other PR
-
-If one PR modifies a definition and another references it, the Context Bundle may include:
-
-```text
-modified definition
-+
-relevant call/reference
-+
-enclosing method/function context
-```
-
-This provides the AI with more useful information than sending two isolated matching lines.
-
----
-
-## Structural Context
-
-Where structural analysis is available, Repository Context Retrieval can reuse information already extracted during Candidate Discovery.
-
-Examples include:
-
-- enclosing function or method,
-- enclosing class,
-- changed definition body,
-- location of a relevant call or reference.
-
-Structural information should be reused rather than reparsed unnecessarily.
-
----
-
-## Bounded Code Context
-
-The system should avoid automatically providing entire large files.
-
-Preferred context units include:
-
-- relevant diff hunks,
-- enclosing function or method,
-- bounded line ranges around a relevant reference.
-
-A full file may be included when it is small and directly relevant, but full-file retrieval is not the default strategy.
-
----
-
-## Retrieval Reasons
-
-Every additional repository snippet should have a clear reason for being included.
-
-Examples:
-
-```text
-Reason:
-Contains the method definition modified by PR A.
-```
-
-```text
-Reason:
-Contains the call identified by Candidate Discovery in PR B.
-```
-
-This preserves explainability and makes it easier to understand why specific context was sent to the AI.
-
----
-
-## Context Deduplication
-
-The same code may be relevant to multiple pieces of evidence.
-
-Duplicate snippets should be removed before the Context Bundle is sent to later stages.
-
-This reduces unnecessary context and token usage without changing the available information.
+The objective is not to find every potentially related repository artifact. It is to provide a focused explanation of the deterministic relationship already discovered.
 
 ---
 
 ## Output
 
-Repository Context Retrieval produces a structured Context Bundle.
-
 Conceptually:
 
 ```text
-Context Bundle
-├── Pull Request A
-│   └── Relevant Changes
-│
-├── Pull Request B
-│   └── Relevant Changes
-│
-├── Evidence[]
-├── Repository Context[]
-│   ├── File / Symbol
-│   ├── Code Snippet
-│   └── Retrieval Reason
-│
-└── Coverage Limitations[]
+Pair Analysis Input
+├── Pull Request A metadata
+├── Pull Request B metadata
+├── Technical Term Matches[]
+├── Relevant Change Hunks[]
+├── Relevant Source Snippets[]
+└── Analysis Warnings[]
 ```
 
-This Context Bundle becomes the input to AI Risk Analysis.
+This object is an internal AI-input contract. It does not need to become a general-purpose repository-context domain model.
 
 ---
 
 ## System Boundaries
 
-Repository Context Retrieval is responsible for:
+Focused Analysis Input is responsible for:
 
-- selecting relevant repository information,
-- expanding Candidate Discovery evidence with useful code context,
-- bounding the amount of retrieved content,
-- removing duplicate context,
-- preserving the reason for each retrieved snippet,
-- preparing structured AI input.
+- selecting and bounding relevant change hunks and snippets,
+- enforcing the minimum input required before AI assessment,
+- reusing Candidate Discovery results,
+- preventing complete-repository prompts,
+- exposing missing or truncated information.
 
-Repository Context Retrieval is not responsible for:
+It is not responsible for:
 
 - selecting Candidate Pairs,
-- deciding whether an integration risk exists,
-- assigning severity,
-- estimating confidence,
-- generating reviewer recommendations,
-- performing AI reasoning.
+- searching the repository for new relationships,
+- deciding whether a risk exists,
+- assigning severity or confidence.
 
 ---
 
-## Future Evolution
+## Future Improvements
 
-The retrieval strategy may later evolve through:
+Future versions may introduce richer context retrieval when measured scenarios show that the MVP input is insufficient. Possible improvements include:
 
-- richer structural indexes,
+- repository-wide structural indexes,
 - cross-file symbol resolution,
-- semantic retrieval,
-- retrieval-augmented generation,
+- semantic retrieval or RAG,
 - agentic repository search,
-- an external Repository Context Provider.
+- a replaceable external Repository Context Provider,
+- richer deduplication and retrieval-reason metadata.
 
-These strategies may replace or enrich the retrieval implementation without changing the responsibility of this stage.
+These are extensions of the same responsibility, not MVP requirements.

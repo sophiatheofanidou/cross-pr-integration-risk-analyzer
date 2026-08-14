@@ -12,498 +12,252 @@ Its purpose is to understand:
 
 The goal is not to replace these tools, but to identify a workflow that is currently underrepresented.
 
----
+The comparison focuses on documented primary workflows. It does not assume that a flexible product is incapable of an action merely because its public documentation does not mention it.
 
-# Solution Categories
-
-Current solutions can be grouped into four major categories.
-
-## 1. Merge Coordination
-
-These solutions coordinate how approved pull requests are integrated into a protected branch.
-
-Representative solutions:
-
-- [GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue)
-- [Mergify Merge Queue](https://docs.mergify.com/merge-queue/)
-- [GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/)
-
-Their primary objective is to safely validate and merge changes into busy branches.
+The landscape was reviewed in August 2026 and should be revisited as products evolve.
 
 ---
 
-## 2. Pull Request Governance & Validation
+## Executive View
 
-These solutions enforce organizational rules before a pull request may be merged.
+The proposed project does not replace merge queues, CI or AI pull request reviewers.
 
-Representative solution:
+It occupies an earlier and narrower point in the workflow:
 
-- [Azure DevOps Branch Policies](https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops)
+> From the eligible pull requests targeting the same branch, systematically discover which pairs have a meaningful structural relationship and produce a focused, reviewer-facing assessment of their plausible integration risk before merge-queue or CI validation.
 
-Typical capabilities include:
+Existing solutions cover important parts of this workflow:
 
-- required reviewers,
-- build validation,
-- status checks,
-- merge restrictions,
-- linked work items,
-- branch protection.
+- **merge queues and merge trains** validate combined future branch states through configured checks;
+- **pending-PR discovery systems** identify related concurrent changes using file, line or historical overlap;
+- **build-impact tools** determine whether queued changes can be tested independently;
+- **AI reviewers** analyze individual pull requests with repository-wide or connected context;
+- **semantic-conflict research** investigates known change pairs, often through speculative merge, build or test execution;
+- **general coding agents** can explain the interaction between two pull requests once a human has selected the pair.
 
----
+The remaining opportunity is the combination of:
 
-## 3. AI-Assisted Pull Request Review
+1. systematic pair discovery across eligible pull requests;
+2. structural evidence that can connect changes in different files;
+3. focused AI reasoning about the selected pair;
+4. an explanation intended for a reviewer;
+5. analysis before merge, build or test execution.
 
-These tools improve the review quality of individual pull requests using AI.
-
-Representative solutions:
-
-- [GitHub Copilot Code Review](https://docs.github.com/en/copilot/concepts/agents/code-review)
-- [CodeRabbit](https://docs.coderabbit.ai/overview/pull-request-review)
-- [Qodo Code Review](https://docs.qodo.ai/code-review)
-
-Modern tools in this category often use repository context, history and project knowledge in addition to the current diff.
+The output is a prioritized investigation, not proof that a defect exists.
 
 ---
 
-## 4. Semantic Conflict Research
+## Landscape Map
 
-Research approaches investigate semantic conflicts that cannot be detected by Git merge alone.
-
-Representative work:
-
-- [ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf)
-
-These approaches are highly relevant to this problem domain but are currently research-oriented rather than standard development workflows.
-
----
-
-# Primary Responsibility Comparison
-
-| Solution | Category | Primary Responsibility | Main Value |
-|---|---|---|---|
-| [GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) | Merge Coordination | Queue and validate pull requests against the expected future branch state | Prevents outdated validations from breaking busy branches |
-| [Azure DevOps Branch Policies](https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops) | Governance | Enforce review, approval and validation rules | Protects branch quality through configurable policies |
-| [Mergify Merge Queue](https://docs.mergify.com/merge-queue/) | Merge Coordination | Optimize merge scheduling, grouping and CI execution | Improves merge throughput and CI efficiency |
-| [GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/) | Merge Coordination | Validate merge requests together before integration | Tests changes in their expected merge order |
-| [GitHub Copilot Code Review](https://docs.github.com/en/copilot/concepts/agents/code-review) | AI Review | Review individual pull requests | AI-assisted code review |
-| [CodeRabbit](https://docs.coderabbit.ai/overview/pull-request-review) | AI Review | Repository-aware pull request review | Automated review with repository context |
-| [Qodo Code Review](https://docs.qodo.ai/code-review) | AI Review | Deep context-aware AI code review | Multi-agent repository understanding |
-| [ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf) | Research | Detect semantic conflicts using LLM reasoning and generated tests | Demonstrates semantic conflict detection beyond textual merging |
+| Category | Representative solutions | Primary question |
+|---|---|---|
+| Merge coordination and combined-state validation | [GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue), [GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/), [Mergify](https://docs.mergify.com/merge-queue/) | Can the queued changes pass the required checks in their expected merge state? |
+| Pending-PR pair discovery | [ConE](https://arxiv.org/abs/2101.06542), [PR Conflict Detector](https://github.com/github-community-projects/pr-conflict-detector) | Which concurrent pull requests overlap enough to warrant attention? |
+| Build-impact queue optimization | [Aviator affected targets](https://docs.aviator.co/mergequeue/concepts/affected-targets), [Trunk parallel queues](https://docs.trunk.io/merge-queue/optimizations/parallel-queues) | Which queued pull requests can be tested independently? |
+| Repository-aware AI review | [GitHub Copilot Code Review](https://docs.github.com/en/copilot/concepts/agents/code-review), [CodeRabbit](https://docs.coderabbit.ai/guides/code-review-overview), [Qodo](https://docs.qodo.ai/code-review), [Greptile](https://www.greptile.com/docs/introduction) | What should be understood or corrected in this pull request? |
+| Dependent-change coordination | [GitHub stacked pull requests](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-stacked-pull-requests), [Graphite stacks](https://graphite.dev/docs), [Gerrit topics](https://gerrit-review.googlesource.com/Documentation/cross-repository-changes.html) | Which explicitly related changes must move or merge together? |
+| Semantic-conflict research | [ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf), [Crystal](https://homes.cs.washington.edu/~mernst/pubs/vc-conflicts-tse2013-abstract.html), [WeCode](https://doi.org/10.1109/ICSE.2012.6227180) | Do two known changes interfere after textual merging? |
+| Ad-hoc agentic analysis | General coding agents with repository and PR access | How might these two already-selected pull requests interact? |
+| **Proposed project** | **Cross-PR Integration Risk Analyzer** | **Which eligible pairs deserve joint review, and why?** |
 
 ---
 
-# Capability Comparison
+## Broad Capability Comparison
 
-| Capability | [GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) | [Azure DevOps](https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops) | [Mergify](https://docs.mergify.com/merge-queue/) | [GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/) | [Copilot Review](https://docs.github.com/en/copilot/concepts/agents/code-review) | [CodeRabbit](https://docs.coderabbit.ai/overview/pull-request-review) | [Qodo](https://docs.qodo.ai/code-review) | [ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf) | Proposed Project |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Controls merge order | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Enforces review policies | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Validates expected merge state | ✅ | Partial | ✅ | ✅ | ❌ | ❌ | ❌ | Research | ❌ |
-| Executes CI / Builds | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Reviews individual PRs | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Uses repository context | ❌ | ❌ | Partial | ❌ | Partial | ✅ | ✅ | ✅ | ✅ |
-| Identifies interactions between approved PRs | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Partial | ✅ |
-| Produces reviewer-facing cross-PR analysis | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Operates without builds/tests | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+Legend:
+
+- <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> **Yes** — part of the documented workflow.
+- <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> **Partial** — present, but narrower or used for a different objective.
+- <img src="../assets/status-no.svg" width="18" height="18" alt="No"> **No** — the documented mechanism does not provide it.
+- <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> **Unknown** — public documentation does not establish the answer.
+
+Capabilities in the **Proposed project — planned MVP** row describe the approved design, not functionality already implemented.
+
+| Solution | Discovers PR pairs | Deterministic selection | Pair analysis | AI reasoning | Merge/build/test execution | Reviewer explanation |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| [ConE](https://arxiv.org/abs/2101.06542) | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> |
+| [PR Conflict Detector](https://github.com/github-community-projects/pr-conflict-detector) | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> |
+| &nbsp; |  |  |  |  |  |  |
+| [GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| [GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| [Mergify Merge Queue](https://docs.mergify.com/merge-queue/) | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| [Aviator MergeQueue](https://docs.aviator.co/mergequeue/concepts/affected-targets) | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| [Trunk Merge Queue](https://docs.trunk.io/merge-queue/optimizations/parallel-queues) | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| &nbsp; |  |  |  |  |  |  |
+| [GitHub Copilot Code Review](https://docs.github.com/en/copilot/concepts/agents/code-review) | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| [CodeRabbit](https://docs.coderabbit.ai/guides/code-review-overview) | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| [CodeRabbit Multi-Repo Analysis](https://docs.coderabbit.ai/knowledge-base/multi-repo-analysis) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| [Qodo Code Review](https://docs.qodo.ai/code-review) | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| [Greptile](https://www.greptile.com/docs/introduction) | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| Ad-hoc coding agent | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| &nbsp; |  |  |  |  |  |  |
+| [GitHub stacked pull requests](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-stacked-pull-requests) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| [Graphite stacks](https://graphite.dev/docs) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| [Gerrit topics](https://gerrit-review.googlesource.com/Documentation/cross-repository-changes.html) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> |
+| &nbsp; |  |  |  |  |  |  |
+| [ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> |
+| [Crystal](https://homes.cs.washington.edu/~mernst/pubs/vc-conflicts-tse2013-abstract.html) and [WeCode](https://doi.org/10.1109/ICSE.2012.6227180) research | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> |
+| &nbsp; |  |  |  |  |  |  |
+| **Proposed project — planned MVP** | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+
+Rows remain ordered by the categories in the Landscape Map. Blank rows separate the groups without adding another category column. `Partial` for merge queues means that they can expose the effect of a combination through grouping or failed checks; it does not mean that they perform semantic pair discovery. `Unknown` records missing public evidence rather than assuming absence.
+
+**Merge/build/test execution** means constructing or using a combined code state and running merge simulation, builds, tests or other executable checks against it. The planned MVP does not check out, merge or execute analyzed pull requests.
 
 ---
 
-# Detailed Analysis
+## Detailed Category Notes
 
 <details>
-<summary><strong>GitHub Merge Queue</strong></summary>
+<summary><strong>Merge queues and merge trains</strong></summary>
 
-Official documentation:  
-[GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue)
+### What they do well
 
-## Primary Workflow
+[GitHub Merge Queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue), [GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/) and [Mergify Merge Queue](https://docs.mergify.com/merge-queue/) protect busy branches from changes that passed independently but fail in an expected combined state. They coordinate order, construct speculative states and run configured checks before merging.
 
-GitHub Merge Queue is designed for protected branches that receive frequent pull requests.
+GitLab describes the underlying problem directly: two merge requests may each pass their own pipeline while their combined changes still conflict. This is strong validation of the problem, but also a reminder that the project must not claim merge queues are blind to cross-PR issues.
 
-When an approved pull request enters the queue, GitHub creates a temporary merge group representing the expected future state of the target branch. Required status checks can then run against that temporary combined state.
+### Boundary relative to this project
 
-A pull request is merged only when the configured checks succeed.
+A merge queue answers:
 
-## Strengths
+> Does this combined state pass the checks required for merging?
 
-- Native integration with GitHub repositories.
-- Protects busy branches from incompatible sequential merges.
-- Revalidates pull requests against an updated target state.
-- Integrates with required status checks and branch protection.
-- Provides an authoritative result when the configured CI checks cover the relevant problem.
-- Reduces the need for developers to repeatedly update their branches manually.
+The proposed project answers:
 
-## Boundary Relative to the Proposed Project
+> Which pairs deserve attention before that stage, what changed relationship connects them, and what should a reviewer inspect?
 
-GitHub Merge Queue primarily answers:
+The meaningful differences are:
 
-> Can this pull request pass the required checks in its expected position in the merge queue?
+- **timing** — before queue execution rather than during it;
+- **selection** — technically related pairs rather than queue-neighbour combinations;
+- **coverage** — plausible assumptions beyond what configured checks happen to assert;
+- **output** — an explanation rather than only a status result.
 
-Its validation begins after a pull request enters the merge workflow.
-
-The proposed project operates earlier. It starts from the collection of approved pull requests targeting the same branch and attempts to identify which combinations deserve deeper investigation before expensive build, test or merge-queue validation begins.
-
-The two tools are therefore complementary:
-
-- GitHub Merge Queue validates an expected combined branch state.
-- The proposed project prioritizes which combinations appear worthy of closer attention before that validation.
+The project should be positioned as a pre-queue complement, not a replacement.
 
 </details>
 
 <details>
-<summary><strong>Azure DevOps Branch Policies</strong></summary>
+<summary><strong>Pending-PR pair discovery: ConE and PR Conflict Detector</strong></summary>
 
-Official documentation:  
-[Azure DevOps Branch Policies](https://learn.microsoft.com/en-us/azure/devops/repos/git/branch-policies?view=azure-devops)
+### [ConE](https://arxiv.org/abs/2101.06542)
 
-Additional integration documentation:  
-[Azure DevOps Pull Request Status Policies](https://learn.microsoft.com/en-us/azure/devops/repos/git/pr-status-policy?view=azure-devops)
+ConE is the closest conceptual precedent for Candidate Discovery. It examined concurrently open pull requests, measured overlap, used historical co-edit rarity to suppress weak recommendations and notified developers about potentially conflicting pairs.
 
-## Primary Workflow
+Its published evaluation covered 234 repositories and approximately 26,000 pull requests. More than 70% of 775 recommendations were rated useful, and more than 90% of 48 interviewed developers intended to use the service daily.
 
-Azure DevOps Branch Policies allow organizations to define the conditions that must be satisfied before changes can be merged into important branches.
+ConE is important for two reasons:
 
-Policies may require:
+1. it demonstrates that systematic discovery across concurrent pull requests has practical value;
+2. its contribution depended heavily on suppressing false alarms, not merely finding more overlaps.
 
-- a minimum number of reviewers,
-- successful build validation,
-- resolved review comments,
-- linked work items,
-- automatically included reviewers,
-- external status checks,
-- and permitted merge strategies.
+It did not perform AI semantic reasoning about the changed assumptions behind a pair.
 
-External systems can also publish pull request status information that Azure DevOps may use as a merge requirement.
+### [PR Conflict Detector](https://github.com/github-community-projects/pr-conflict-detector)
 
-## Strengths
+The GitHub community PR Conflict Detector groups open pull requests by modified file, compares relevant line ranges and can optionally verify merge conflicts through the GitHub API.
 
-- Strong support for enterprise governance.
-- Configurable review and validation requirements.
-- Tight integration with Azure Repos and Azure Pipelines.
-- Can prevent pull request completion when required validation fails.
-- Supports external security, quality and compliance services.
-- Allows organizations to encode their own engineering policies.
+It resembles the shape of Candidate Discovery, but its evidence is textual and location-based. It does not target the important case in which two pull requests change different files connected by a shared technical concept.
 
-## Boundary Relative to the Proposed Project
+### Design lesson
 
-Azure DevOps provides the platform through which review and validation policies are enforced.
-
-It does not inherently define the specific analysis required to discover risky relationships between several approved pull requests. That logic must come from pipelines, status providers or external tools configured by the organization.
-
-The proposed project focuses on that narrower analysis:
-
-1. Collect approved pull requests targeting the same branch.
-2. Generate and evaluate possible pull-request pairs.
-3. Identify pairs with strong interaction evidence.
-4. Present reviewer-facing explanations.
-
-In a future version, the proposed project could publish its result as an Azure DevOps pull request status rather than replace Azure DevOps governance.
+The project should not present pair generation or deterministic pair filtering as novel. Its more specific contribution is structural cross-file selection followed by a focused reviewer explanation.
 
 </details>
 
 <details>
-<summary><strong>Mergify Merge Queue</strong></summary>
+<summary><strong>Build-impact selection: Aviator and Trunk</strong></summary>
 
-Official documentation:  
-[Mergify Merge Queue](https://docs.mergify.com/merge-queue/)
+[Aviator affected targets](https://docs.aviator.co/mergequeue/concepts/affected-targets) and [Trunk parallel queues](https://docs.trunk.io/merge-queue/optimizations/parallel-queues) can use affected targets from systems such as Bazel or Nx to determine which queued pull requests are independent.
 
-Related documentation:  
-[Mergify Scopes](https://docs.mergify.com/merge-queue/scopes/)
+This is Candidate Discovery with a different objective:
 
-## Primary Workflow
+- they determine what can safely be tested apart;
+- this project determines what may need to be reviewed together.
 
-Mergify provides advanced merge orchestration for GitHub repositories.
+Build-graph evidence can be highly useful in repositories that already maintain accurate dependency metadata. It may also be coarser than a structural source-code relationship because one build target can cover a large area.
 
-Its merge-queue capabilities include:
-
-- serial, parallel and isolated queue modes,
-- batching,
-- prioritization,
-- configurable queue rules,
-- speculative CI execution,
-- scope-aware processing,
-- monorepo support,
-- and CI cost optimization.
-
-Scopes can describe which areas of a codebase a pull request affects. Mergify can use file-based relationships to group or separate queued pull requests and improve validation efficiency.
-
-## Strengths
-
-- Advanced and configurable merge orchestration.
-- Strong support for high-volume repositories.
-- Useful for monorepos and repositories with expensive CI.
-- Supports grouping and separation of changes by code area.
-- Can improve CI throughput through batching and speculative execution.
-- Recognizes that some pull requests affect related parts of a repository.
-
-## Boundary Relative to the Proposed Project
-
-Mergify is one of the closest merge-coordination comparisons because it already uses changed-file awareness and scopes.
-
-Its primary objective, however, is operational:
-
-> How should approved pull requests be grouped, ordered and validated efficiently?
-
-The proposed project produces a different type of result:
-
-> Which approved pull-request pairs appear likely to interact, what evidence connects them, and what should a reviewer inspect?
-
-Mergify may group related pull requests to optimize queue execution. The proposed project makes the detected relationship itself the subject of an explainable reviewer-facing risk report.
+The proposed project instead uses structural source-code evidence and does not depend on Bazel, Nx or other build-graph configuration.
 
 </details>
 
 <details>
-<summary><strong>GitLab Merge Trains</strong></summary>
+<summary><strong>Repository-aware AI reviewers</strong></summary>
 
-Official documentation:  
-[GitLab Merge Trains](https://docs.gitlab.com/ci/pipelines/merge_trains/)
+Modern AI reviewers such as [GitHub Copilot Code Review](https://docs.github.com/en/copilot/concepts/agents/code-review), [CodeRabbit](https://docs.coderabbit.ai/guides/code-review-overview), [Qodo](https://docs.qodo.ai/code-review) and [Greptile](https://www.greptile.com/docs/introduction) should not be described as diff-only tools. Their documented context can include repository structure, code definitions, history, guidelines, issues, organizational knowledge and linked repositories.
 
-## Primary Workflow
+Their core workflow remains different from the proposed project:
 
-GitLab Merge Trains place merge requests in an ordered queue.
+- an AI reviewer normally starts with one pull request and evaluates that change;
+- this project starts with the set of eligible pull requests and first discovers which pairs warrant analysis.
 
-Each merge-train pipeline represents an expected future branch state containing:
+[CodeRabbit Multi-Repo Analysis](https://docs.coderabbit.ai/knowledge-base/multi-repo-analysis) deserves particular monitoring because it already provides repository-aware review, cross-repository impact analysis and semantic explanations. Its public documentation does not currently establish systematic discovery of sibling open pull requests targeting the same branch. That is a current documentation boundary, not a claim that the product could never implement it.
 
-- the current target branch,
-- changes from merge requests scheduled earlier in the train,
-- and the changes of the current merge request.
-
-GitLab then executes the configured pipeline against that combined state.
-
-## Strengths
-
-- Validates changes in their expected merge order.
-- Protects frequently updated branches.
-- Integrates directly with GitLab CI/CD.
-- Detects problems caused by combinations of queued changes when the pipeline covers them.
-- Rebuilds the expected train state when queue membership changes.
-
-## Boundary Relative to the Proposed Project
-
-GitLab Merge Trains answer:
-
-> Will this merge request pass the configured pipeline together with the changes scheduled before it?
-
-This is a dynamic validation workflow based on CI execution.
-
-The proposed project does not build or test the combined code. It performs an earlier lightweight analysis intended to identify which approved pull-request combinations deserve deeper review or expensive validation.
+The same caution applies to Copilot, Qodo and Greptile: silence about open-PR context should be recorded as unknown rather than converted into a categorical `No`.
 
 </details>
 
 <details>
-<summary><strong>GitHub Copilot Code Review</strong></summary>
+<summary><strong>Dependent-change coordination</strong></summary>
 
-Official documentation:  
-[GitHub Copilot Code Review](https://docs.github.com/en/copilot/concepts/agents/code-review)
+[GitHub stacked pull requests](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-stacked-pull-requests), [Graphite stacks](https://graphite.dev/docs) and [Gerrit topics](https://gerrit-review.googlesource.com/Documentation/cross-repository-changes.html) coordinate changes that developers already know are related. They preserve dependencies, review order or joint submission behaviour.
 
-## Primary Workflow
+They solve an important collaboration problem, but they assume the relationship has already been declared. They do not discover an undeclared semantic relationship between independently developed changes.
 
-GitHub Copilot Code Review analyzes code changes and provides automated review feedback.
-
-It can be requested as a reviewer on pull requests and may also be configured to participate automatically in supported workflows.
-
-Repository-specific instructions can guide how Copilot reviews the code.
-
-## Strengths
-
-- Native GitHub review experience.
-- Supports multiple programming languages.
-- Produces actionable review comments.
-- Can suggest changes and fixes.
-- Requires little additional workflow integration.
-- Can use repository instructions to follow project-specific conventions.
-
-## Boundary Relative to the Proposed Project
-
-The documented unit of analysis is the current pull request or current set of code changes.
-
-Its primary goal is to improve the quality of an individual change.
-
-The proposed project begins from a different input:
-
-> The set of approved pull requests targeting the same branch.
-
-It then generates candidate pairs and asks which combinations should be reviewed together.
-
-Copilot Code Review and the proposed project therefore address different levels of the review workflow:
-
-- Copilot reviews a change.
-- The proposed project prioritizes relationships between approved changes.
+This distinction matters because the proposed project is most useful when no author or reviewer has already identified the counterpart pull request.
 
 </details>
 
 <details>
-<summary><strong>CodeRabbit</strong></summary>
+<summary><strong>Semantic-conflict research</strong></summary>
 
-Official documentation:  
-[CodeRabbit Pull Request Review](https://docs.coderabbit.ai/overview/pull-request-review)
+Semantic-conflict research investigates cases where branches merge textually but interfere behaviourally. Systems may use static analysis, speculative merging, generated tests, builds or test execution.
 
-## Primary Workflow
+[ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf) combines LLM-assisted localization with generated tests intended to confirm or reject a conflict hypothesis. Earlier systems such as [Crystal](https://homes.cs.washington.edu/~mernst/pubs/vc-conflicts-tse2013-abstract.html) and [WeCode](https://doi.org/10.1109/ICSE.2012.6227180) monitored concurrent work and speculatively merged, built or tested combinations.
 
-CodeRabbit automatically reviews pull requests and updates its findings as new commits are added.
+These systems either begin with a known pair or perform substantially heavier validation than the proposed MVP.
 
-Its capabilities include:
-
-- inline review comments,
-- pull request summaries,
-- structured walkthroughs,
-- actionable suggestions,
-- repository-aware analysis,
-- issue-tracker context,
-- review learnings,
-- and configurable path-specific instructions.
-
-CodeRabbit uses broader repository knowledge rather than relying exclusively on the current diff.
-
-## Strengths
-
-- Strong pull-request-focused user experience.
-- Automatic and incremental reviews.
-- Repository-wide contextual awareness.
-- Structured summaries and walkthroughs.
-- Actionable code suggestions.
-- Configurable review behaviour.
-- Conversational follow-up within the review workflow.
-
-## Boundary Relative to the Proposed Project
-
-The distinction cannot be that CodeRabbit only reads a diff. It has broader repository context.
-
-Its central workflow nevertheless starts from one pull request and asks:
-
-> What should the author and reviewer understand, correct or improve in this PR?
-
-The proposed project starts from all approved pull requests targeting a branch and asks:
-
-> Which combinations should be inspected together?
-
-The main differentiator is therefore explicit pair discovery and deterministic selection of technically related cross-PR interactions for deeper analysis.
+The proposed project deliberately stops earlier. It identifies a plausible interaction and gives the reviewer an evidence-based question to investigate. It does not claim verified semantic-conflict detection.
 
 </details>
 
 <details>
-<summary><strong>Qodo Code Review</strong></summary>
+<summary><strong>The ad-hoc coding-agent substitute</strong></summary>
 
-Official documentation:  
-[Qodo Code Review](https://docs.qodo.ai/code-review)
+A developer with repository access can ask a coding agent to compare two pull requests in under a minute. For a pair the developer already suspects, this may provide an explanation comparable to the proposed project's AI stage.
 
-Context documentation:  
-[Qodo Context Engine](https://docs.qodo.ai/core-concepts/context-engine)
+Therefore, AI reasoning alone is not the defensible value.
 
-## Primary Workflow
+The project must justify itself through:
 
-Qodo provides multi-agent, context-aware code review.
+- systematic coverage of the eligible pair space;
+- deterministic cost reduction before AI analysis;
+- repeatable and bounded context construction;
+- consistent evidence and limitation reporting;
+- reviewer-facing results without requiring a human to identify every pair first.
 
-Its context capabilities may include:
-
-- repository structure,
-- pull request history,
-- dependencies,
-- engineering standards,
-- review behaviour,
-- organizational knowledge,
-- and connected development workflows.
-
-Qodo aims to identify issues such as:
-
-- breaking changes,
-- specification gaps,
-- design deviations,
-- cross-module risks,
-- and system-level inconsistencies.
-
-## Strengths
-
-- Deep repository and organizational context.
-- Multi-agent analysis.
-- Repository-history awareness.
-- Dependency and architectural understanding.
-- Detection of breaking changes and specification gaps.
-- Broader system-level reasoning than basic diff-only review.
-- Persistent context across development workflows.
-
-## Boundary Relative to the Proposed Project
-
-Qodo has the strongest overlap with the broader technical ambition of the proposed project and may detect some similar risks.
-
-The proposed project is intentionally narrower and makes the following workflow explicit:
-
-1. Select open, non-draft and approved pull requests targeting the same branch.
-2. Generate possible pull-request pairs.
-3. Apply deterministic technical-evidence rules.
-4. Select pairs with meaningful evidence as Candidate Pairs.
-5. Retrieve relevant repository context.
-6. Produce a dedicated cross-PR interaction report.
-
-Qodo is a broad AI code-review platform.
-
-The proposed project is a focused workflow for approved-PR pair discovery and pre-validation prioritization.
-
-</details>
-
-<details>
-<summary><strong>ConflictLens</strong></summary>
-
-Research paper:  
-[ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf)
-
-## Primary Workflow
-
-ConflictLens is an LLM-assisted research approach for detecting semantic conflicts during branch integration.
-
-Its workflow includes two major stages:
-
-1. Static localization of possible semantic conflicts using LLM reasoning.
-2. Generation and execution of targeted tests to confirm or reject the conflict hypothesis.
-
-The approach investigates situations in which independently developed changes merge textually but interfere semantically.
-
-## Strengths
-
-- Directly targets semantic merge conflicts.
-- Examines interactions between independently developed changes.
-- Combines static reasoning with dynamic validation.
-- Generates stronger evidence than an unsupported LLM opinion.
-- Demonstrates that semantic-conflict detection is an active engineering research problem.
-- Closely matches the conceptual motivation behind cross-change risk analysis.
-
-## Boundary Relative to the Proposed Project
-
-ConflictLens goes beyond the intended MVP because it:
-
-- generates tests,
-- executes tests,
-- and dynamically validates a merged result.
-
-The proposed project deliberately stops earlier.
-
-Its goal is to:
-
-- analyze several approved pull requests,
-- discover candidate pairs,
-- retrieve relevant repository context,
-- avoid build and test execution,
-- and provide explainable warnings for human review.
-
-ConflictLens attempts to confirm semantic conflicts.
-
-The proposed project attempts to prioritize possible integration risks before expensive validation begins.
+For repositories with very few simultaneous eligible pull requests, manual analysis may remain sufficient.
 
 </details>
 
 ---
 
-# Opportunity
+## Where the Project Fits
 
-Existing solutions already provide strong support for:
+No verified direct product was found whose documented primary workflow combines all of these characteristics:
 
-- merge coordination,
-- repository governance,
-- CI/CD validation,
-- and AI-assisted review of individual pull requests.
+1. starts from eligible pull requests targeting the same branch;
+2. discovers which pairs merit investigation without a human naming them;
+3. uses structural evidence capable of connecting different changed files;
+4. performs focused semantic analysis of the selected pair;
+5. produces an explanation designed for a reviewer;
+6. operates before merge, build or test execution.
 
-The proposed project focuses on a different stage of the workflow.
+This is a genuine but narrow workflow gap. It should not be inflated into a broad novelty claim.
 
-Instead of validating code after pull requests enter a merge workflow, it identifies which approved pull request combinations deserve deeper investigation before expensive validation begins.
+The most defensible product promise is:
 
-Its objective is to improve reviewer prioritization through explainable cross-pull-request interaction analysis.
+> Find technically related pull-request pairs that reviewers are unlikely to inspect together by default, and explain the plausible changed assumption that connects them.
+
+The strongest differentiation is not that the project can reason about two changes. It is that it can decide **which pairs deserve that reasoning**, using a bounded and repeatable process.
