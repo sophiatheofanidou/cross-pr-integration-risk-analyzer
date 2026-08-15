@@ -92,13 +92,13 @@ Ranking may be reconsidered only when measured Candidate Pair volume demonstrate
 
 ---
 
-## ADR-008 — Focused AI Input Without Repository-Wide Retrieval
+## ADR-008 — Context Retrieval Without Repository-Wide Retrieval
 
 **Status:** Accepted
 
 AI Risk Analysis receives relevant change hunks, Technical Term Matches, bounded enclosing snippets and explicit warnings rather than the complete repository. Match-centered material is selected before input limits are applied.
 
-Focused input preparation remains a separate responsibility but is implemented as a small builder in the MVP, not as a standalone repository-context subsystem.
+Context Retrieval remains a separate responsibility but is implemented as a small builder in the MVP, not as a standalone repository-context subsystem.
 
 The provider is invoked only when at least one match retains sufficient change and source context. A discovered but unassessable pair remains visible with an explicit warning and no AI risk status.
 
@@ -108,7 +108,7 @@ The provider is invoked only when at least one match retains sufficient change a
 
 **Status:** Accepted
 
-The MVP uses one validated Claude assessment per Candidate Pair with sufficient focused input.
+The MVP uses one validated Claude assessment per Candidate Pair with sufficient context.
 
 Candidate Discovery already provides the first cost-control filter. A second AI screening tier is deferred until measurements justify its extra prompts, schemas and orchestration.
 
@@ -210,7 +210,7 @@ Uncertain and materially incomplete cases should escalate. Before implementation
 
 Add application-level persistent caching when repeated analyses of unchanged PR pairs become part of the workflow.
 
-The cache key should include immutable PR revisions, focused analysis input, prompt/schema versions and relevant model configuration. A valid hit avoids the AI request entirely.
+The cache key should include immutable PR revisions, retrieved context, prompt/schema versions and relevant model configuration. A valid hit avoids the AI request entirely.
 
 SQLite remains the preferred local portfolio option because it provides durable storage without separate database infrastructure. The implementation should remain behind a replaceable cache interface.
 

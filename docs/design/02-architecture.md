@@ -32,7 +32,7 @@ flowchart TD
     A[Source Control Integration]
     B[Pull Request Eligibility Selection]
     C[Candidate Discovery]
-    D[Focused Analysis Input Preparation]
+    D[Context Retrieval]
     E[AI Risk Assessment]
     F[Risk Report]
     G[Human Reviewer]
@@ -62,7 +62,7 @@ Its responsibilities include retrieving and normalizing:
 - diffs,
 - and selected repository contents.
 
-The component also supports bounded, on-demand retrieval of selected repository file versions when Candidate Discovery or Focused Analysis Input Preparation requires more source context than the available diff provides. Candidate Discovery may reconstruct changed ranges from those selected before/after versions when a provider diff is unavailable or insufficient.
+The component also supports bounded, on-demand retrieval of selected repository file versions when Candidate Discovery or Context Retrieval requires more source context than the available diff provides. Candidate Discovery may reconstruct changed ranges from those selected before/after versions when a provider diff is unavailable or insufficient.
 
 For pull-request change reconstruction, the selected before/after versions represent the comparison base for the changes introduced by the pull request and the pull request head. Current-target versus simulated-merge analysis is a separate concern and is not implied by this retrieval boundary.
 
@@ -108,7 +108,7 @@ The selection criterion and structural-analysis strategy are defined in the Cand
 
 ---
 
-### Focused Analysis Input Preparation
+### Context Retrieval
 
 Prepares the focused information required to evaluate a selected Candidate Pair.
 
@@ -116,7 +116,7 @@ Its purpose is to provide enough context for meaningful AI reasoning without sen
 
 The selection strategy is guided by the Technical Term Matches produced during Candidate Discovery and reuses structural information and file contents already available from that stage.
 
-This is a distinct logical responsibility, not a requirement for an independently deployed subsystem. It may be implemented as a small analysis-input builder while remaining separate from candidate selection and semantic risk reasoning. Detailed behaviour is defined in the Focused Analysis Input design.
+This is a distinct logical responsibility, not a requirement for an independently deployed subsystem. It may be implemented as a small context builder while remaining separate from candidate selection and semantic risk reasoning. Detailed behaviour is defined in the Context Retrieval design.
 
 ---
 
@@ -137,7 +137,7 @@ The AI should distinguish between:
 - uncertainty,
 - and missing information.
 
-Assessment is invoked only when sufficient focused input is available. The concrete provider, model and orchestration strategy are release-level choices rather than architectural constraints.
+Assessment is invoked only when sufficient context is available. The concrete provider, model and orchestration strategy are release-level choices rather than architectural constraints.
 
 Detailed assessment behaviour and future optimization paths are defined in the AI Risk Analysis design.
 
@@ -169,8 +169,8 @@ It does not automatically approve, reject or merge pull requests.
 2. Eligible approved pull requests are selected and grouped by target branch.
 3. Candidate Discovery examines possible pull request combinations.
 4. Pairs with meaningful technical evidence become Candidate Pairs.
-5. Focused analysis input is prepared from the relevant diffs, matches and source snippets.
-6. Candidate Pairs with sufficient focused input receive AI Risk Assessment; an unassessable pair remains visible with an explicit warning.
+5. Context Retrieval prepares relevant context from the diffs, matches and source snippets.
+6. Candidate Pairs with sufficient context receive AI Risk Assessment; an unassessable pair remains visible with an explicit warning.
 7. Findings are transformed into explainable reviewer-facing reports.
 8. A human reviewer decides whether additional investigation or validation is required.
 
@@ -187,7 +187,7 @@ Responsible for:
 - objective evidence extraction,
 - structural analysis where available,
 - candidate selection,
-- focused context preparation.
+- context retrieval.
 
 ### AI Reasoning
 

@@ -293,7 +293,7 @@ Candidate Discovery Result
 └── Analysis Warnings[]
 ```
 
-This output becomes the input to Focused Analysis Input Preparation.
+This output becomes the input to Context Retrieval.
 
 ---
 

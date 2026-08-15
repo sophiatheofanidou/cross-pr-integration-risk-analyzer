@@ -21,7 +21,7 @@ Unique Pull Request Pairs
                 ↓
 TypeScript Structural Candidate Discovery
                 ↓
-Focused Pair Analysis Input
+Context Retrieval
                 ↓
 Single Claude Risk Assessment
                 ↓
@@ -36,7 +36,7 @@ The workflow is:
 4. Changed TypeScript files are analyzed structurally.
 5. Pairs with at least one Technical Term Match become Candidate Pairs.
 6. Relevant change hunks and enclosing snippets are prepared for each candidate.
-7. Claude performs one structured risk assessment per Candidate Pair with sufficient focused input.
+7. Claude performs one structured risk assessment per Candidate Pair with sufficient context.
 8. The Angular interface displays findings, evidence and warnings.
 
 ---
@@ -53,7 +53,7 @@ The workflow is:
 | Structural Parsing | Tree-sitter |
 | Analyzed Source Language | TypeScript `.ts` files |
 | AI Provider | Claude |
-| AI Strategy | One structured assessment per Candidate Pair with sufficient focused input |
+| AI Strategy | One structured assessment per Candidate Pair with sufficient context |
 | Persistent Result Cache | Deferred |
 | Prompt Caching | Deferred |
 | Repository Context | Focused change hunks and source snippets |
@@ -135,9 +135,9 @@ Provider patches are preferred. Local reconstruction is performed only for the s
 
 ---
 
-## Focused Pair Analysis Input
+## Context Retrieval
 
-For each Candidate Pair, the backend prepares:
+For each Candidate Pair, Context Retrieval provides:
 
 - concise PR metadata,
 - Technical Term Matches,
@@ -146,7 +146,7 @@ For each Candidate Pair, the backend prepares:
 - bounded snippets around matching occurrences,
 - analysis warnings relevant to either pull request in the pair.
 
-The builder selects match-centered hunks and snippets before applying input limits; it does not blindly truncate a complete patch. The complete repository is never sent to Claude. The implementation reuses file contents and syntax ranges already obtained during Candidate Discovery.
+Context Retrieval selects match-centered hunks and snippets before applying context limits; it does not blindly truncate a complete patch. The complete repository is never sent to Claude. The implementation reuses file contents and syntax ranges already obtained during Candidate Discovery.
 
 Claude is invoked when at least one Technical Term Match retains its relevant change hunk and both required source contexts. If no match satisfies that minimum, the Candidate Pair remains visible with an assessment-not-run warning and no AI risk status is produced.
 
@@ -154,7 +154,7 @@ Claude is invoked when at least one Technical Term Match retains its relevant ch
 
 ## AI Scope
 
-Each Candidate Pair with sufficient focused input receives one Claude assessment.
+Each Candidate Pair with sufficient context receives one Claude assessment.
 
 The validated result contains:
 
@@ -207,7 +207,7 @@ The scenario set should include:
 - a coincidental same-name relationship that AI should reject,
 - unrelated PRs that should not become a Candidate Pair,
 - unsupported or incomplete input that produces a warning,
-- a discovered pair with no viable focused input that does not invoke AI.
+- a discovered pair with insufficient context that does not invoke AI.
 
 These scenarios protect the product's core value and provide the final demonstration baseline.
 
@@ -263,7 +263,7 @@ Add a cheaper screening model before detailed analysis when measured Candidate P
 
 ### SQLite Result Caching
 
-Persist validated results across application runs so unchanged PR revisions and unchanged analysis inputs do not repeat paid AI calls.
+Persist validated results across application runs so unchanged PR revisions and unchanged retrieved context do not repeat paid AI calls.
 
 ### Provider Prompt Caching
 

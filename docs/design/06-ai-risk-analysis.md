@@ -2,7 +2,7 @@
 
 ## Purpose
 
-AI Risk Analysis evaluates each Candidate Pair using its focused Pair Analysis Input.
+AI Risk Analysis evaluates each Candidate Pair using the context produced by Context Retrieval.
 
 Candidate Discovery establishes an objective structural relationship. AI Risk Analysis asks whether that relationship may represent a meaningful cross-PR integration risk:
 
@@ -14,12 +14,12 @@ The result is advisory. The final decision remains with the reviewer.
 
 ## MVP Strategy
 
-The MVP performs one structured AI assessment per Candidate Pair whose focused input contains at least one sufficiently supported Technical Term Match.
+The MVP performs one structured AI assessment per Candidate Pair whose retrieved context contains at least one sufficiently supported Technical Term Match.
 
 ```text
 Candidate Pair
       ↓
-Focused Pair Analysis Input
+Context Retrieval
       ↓
 AI Risk Assessment
       ↓
@@ -28,7 +28,7 @@ Risk Result
 
 One assessment is sufficient to demonstrate the core workflow. A separate screening tier is not required before candidate volume and AI cost have been measured.
 
-Input sufficiency is checked before invoking the provider. A discovered pair with no complete match-centered input remains visible with an explicit assessment-not-run warning; it does not produce an AI risk status.
+Context sufficiency is checked before invoking the provider. A discovered pair with no complete match-centered context remains visible with an explicit assessment-not-run warning; it does not produce an AI risk status.
 
 ---
 
@@ -126,7 +126,7 @@ The report gives the reviewer a concrete relationship, explanation and targeted 
 The MVP controls AI cost through the mechanisms that are already part of the product's core value:
 
 - deterministic Candidate Discovery reduces the number of pairs sent to AI,
-- focused analysis input reduces tokens per assessment,
+- bounded retrieved context reduces tokens per assessment,
 - each assessable Candidate Pair is assessed only once within one analysis run.
 
 The MVP does not need additional infrastructure to demonstrate cost-aware reasoning.
@@ -166,7 +166,7 @@ Persistent application-level result caching also remains an intentional future i
 A SQLite cache may store validated assessment results using a key derived from:
 
 - both immutable pull-request revisions,
-- the focused analysis input,
+- the retrieved context,
 - prompt and output-schema versions,
 - relevant model configuration.
 

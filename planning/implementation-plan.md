@@ -54,7 +54,7 @@ The existing M1 domain contracts intentionally reflect the previous design and w
 | Structural Parser | Tree-sitter |
 | Analyzed Source | TypeScript `.ts` files |
 | AI Provider | Claude |
-| AI Strategy | One structured assessment per Candidate Pair with sufficient focused input |
+| AI Strategy | One structured assessment per Candidate Pair with sufficient context |
 | API Style | One synchronous analysis operation |
 | Persistent Cache | Deferred |
 
@@ -151,7 +151,7 @@ PR B changed terms ∩ PR A occurrences
 
 7. Produce warnings for deleted, renamed, unreconstructable, unavailable, oversized, unsupported or malformed inputs, identifying the affected pull request and file where applicable.
 
-8. Build a small internal Pair Analysis Input by selecting relevant change hunks and snippets before applying size limits. Invoke AI later only when at least one match retains its minimum required context; otherwise preserve an assessment-not-run warning for the Candidate Pair.
+8. Implement Context Retrieval by selecting relevant change hunks and snippets before applying size limits. Invoke AI later only when at least one match retains its minimum required context; otherwise preserve an assessment-not-run warning for the Candidate Pair.
 
 ### Deliberately Excluded
 
@@ -171,7 +171,7 @@ PR B changed terms ∩ PR A occurrences
 - TypeScript Tree-sitter analyzer,
 - per-PR structural facts,
 - term-match evaluator,
-- focused snippet/input builder,
+- context retrieval builder,
 - analysis-warning contract,
 - controlled fixtures.
 
@@ -201,13 +201,13 @@ feat: add TypeScript structural candidate discovery
 
 ### Goal
 
-Interpret each Candidate Pair with sufficient focused input through one structured Claude assessment.
+Interpret each Candidate Pair with sufficient context through one structured Claude assessment.
 
 ### Scope
 
 - define a small provider-neutral `RiskAnalysisProvider`,
-- build one focused prompt from Pair Analysis Input,
-- do not invoke the provider for a Candidate Pair whose focused input failed the minimum-context check,
+- build one focused prompt from the retrieved context,
+- do not invoke the provider for a Candidate Pair whose context failed the minimum-context check,
 - define one Zod-validated output schema,
 - return `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
 - include explanation and confidence,
@@ -264,7 +264,7 @@ Expose the working pipeline through one backend operation and one useful Angular
 - analysis action and loading state,
 - eligible-PR and Candidate-Pair counts,
 - risk/no-risk results,
-- assessment-not-run state for discovered pairs without viable focused input,
+- assessment-not-run state for discovered pairs without sufficient context,
 - Technical Term Match evidence,
 - confidence, severity and reviewer checks,
 - visible analysis warnings,
@@ -336,7 +336,7 @@ Add cheap screening plus detailed escalation when Candidate Pair volume makes on
 
 ## R2 — SQLite Result Cache
 
-Add durable cache entries keyed by PR revisions, focused input and analysis configuration. Keep the cache behind a replaceable interface. If R1 exists, cache screening and detailed results independently where useful.
+Add durable cache entries keyed by PR revisions, retrieved context and analysis configuration. Keep the cache behind a replaceable interface. If R1 exists, cache screening and detailed results independently where useful.
 
 ## R3 — Provider Prompt Caching
 
@@ -362,7 +362,7 @@ Priority areas are:
 - controlled Candidate Discovery scenarios,
 - Technical Term Match production,
 - provider-patch and bounded local-diff changed-range extraction,
-- focused input bounds and warnings,
+- context bounds and warnings,
 - Claude output validation,
 - one end-to-end application flow.
 

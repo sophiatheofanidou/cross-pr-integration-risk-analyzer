@@ -14,8 +14,8 @@ Read `planning/implementation-plan.md` and the approved documents in `docs/desig
 - Do not add lexical Candidate Discovery, a same-file selection rule or additional structural languages to the MVP.
 - Retrieve focused context only; never retrieve repository-wide context.
 - Preserve explicit analysis warnings for unsupported or incomplete inputs.
-- Invoke AI only when at least one Technical Term Match has sufficient focused change and source context; otherwise preserve the Candidate Pair and expose that its assessment was not run.
-- Use one structured Claude assessment per Candidate Pair with sufficient focused input; tiered AI analysis is post-MVP work.
+- Invoke AI only when at least one Technical Term Match has sufficient retrieved context; otherwise preserve the Candidate Pair and expose that its assessment was not run.
+- Use one structured Claude assessment per Candidate Pair with sufficient context; tiered AI analysis is post-MVP work.
 - Do not add SQLite result caching or provider prompt-caching orchestration to the MVP; preserve them as planned post-MVP improvements.
 - Use Zod at external structured-data boundaries. Keep provider schemas adapter-local and separate from the provider-neutral domain contracts; do not revalidate every internal pipeline stage.
 - Do not add an Interaction Score, automatic PR decisions, analyzed-PR combination builds/tests, an ORM or a dependency-injection container without a concrete approved need.
