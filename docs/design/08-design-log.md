@@ -249,6 +249,8 @@ Evaluate:
 
 Evaluate repository indexes, semantic retrieval, RAG, agentic exploration and external Repository Context Providers when focused changed-file context proves insufficient.
 
+One future experiment is to use the Claude API to propose affected technical terms from pull-request changes and selected context, then request bounded read-only search or snippet tools. The repository remains outside the model context and only selected occurrences or snippets are returned. Compare its recall, precision, cost and reproducibility with the Tree-sitter approach before considering adoption.
+
 ---
 
 ## FUTURE-006 — Operational and Product Evolution
