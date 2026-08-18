@@ -112,11 +112,10 @@ export const GITHUB_MAX_PULL_REQUEST_FILES = 3000;
 
 /**
  * Thrown when a pull request's changed-file result reaches exactly
- * GitHub's documented 3,000-file cap. M2's domain model has no
- * coverage-limitation representation at the pull-request-listing level
- * (Coverage Limitations are a Context Bundle concept introduced in a later
- * milestone), so this fails explicitly rather than silently under-reporting
- * Candidate Evidence for the affected pull request.
+ * GitHub's documented 3,000-file cap. Pull-request listing happens before
+ * Candidate Discovery's `AnalysisWarning` scope begins, so this fails
+ * explicitly rather than silently under-reporting Technical Term Matches
+ * for the affected pull request.
  */
 export class GitHubPullRequestFileLimitExceededError extends Error {
   readonly pullRequestNumber: number;

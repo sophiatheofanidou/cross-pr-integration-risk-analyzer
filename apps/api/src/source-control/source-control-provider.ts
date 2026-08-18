@@ -17,8 +17,8 @@ export interface RepositoryRef {
 
 /**
  * Why a requested file's content could not be returned as available text
- * (docs/design/04-candidate-discovery.md, Patch and Source-Content
- * Availability). Later stages convert this into a Coverage Limitation.
+ * (docs/design/04-candidate-discovery.md, Resulting-Content Search). Later
+ * stages convert this into a scoped `AnalysisWarning`.
  */
 export type FileContentUnavailableReason =
   | 'NOT_FOUND'

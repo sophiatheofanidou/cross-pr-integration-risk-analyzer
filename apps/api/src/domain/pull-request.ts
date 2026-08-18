@@ -45,10 +45,10 @@ export interface NormalizedPullRequest {
   /**
    * The immutable revision identifier of the pull request's source branch
    * at the time it was retrieved. Required so later stages (bounded
-   * selected-file retrieval, result-cache identity) can request repository
-   * content at the exact revision this normalized pull request represents,
-   * without depending on provider-specific pull-request identifiers
-   * (docs/design/02-architecture.md, Source Control Integration; ADR-015).
+   * selected-file retrieval) can request repository content at the exact
+   * revision this normalized pull request represents, without depending on
+   * provider-specific pull-request identifiers (docs/design/02-architecture.md,
+   * Source Control Integration; ADR-011).
    */
   readonly headRevision: string;
   /**
@@ -56,11 +56,8 @@ export interface NormalizedPullRequest {
    * request introduces: the "before" counterpart to `headRevision`, needed
    * for bounded before/after file retrieval when a provider-supplied patch
    * is unavailable or insufficient (docs/design/04-candidate-discovery.md,
-   * Patch and Source-Content Availability: "`before` means the immutable
-   * comparison-base revision used to identify what the pull request
-   * introduces, and `after` means the pull request's immutable head
-   * revision"; docs/design/02-architecture.md, Source Control Integration;
-   * ADR-015).
+   * Resulting-Content Search; docs/design/02-architecture.md, Source
+   * Control Integration; ADR-011).
    *
    * This is deliberately not the provider's recorded target-branch commit
    * for the pull request (GitHub's `base.sha`), which does not reliably
