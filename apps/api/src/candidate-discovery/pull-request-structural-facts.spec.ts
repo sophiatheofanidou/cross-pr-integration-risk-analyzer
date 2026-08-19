@@ -15,6 +15,8 @@ describe('prepareAllStructuralFacts', () => {
 
     const pullRequestA: NormalizedPullRequest = {
       id: 'pr-a',
+      title: 'Pull request pr-a',
+      webUrl: 'https://github.com/o/r/pull/pr-a',
       sourceBranch: 'feature/a',
       targetBranch: 'main',
       headRevision: 'a-head',
@@ -23,6 +25,8 @@ describe('prepareAllStructuralFacts', () => {
     };
     const pullRequestB: NormalizedPullRequest = {
       id: 'pr-b',
+      title: 'Pull request pr-b',
+      webUrl: 'https://github.com/o/r/pull/pr-b',
       sourceBranch: 'feature/b',
       targetBranch: 'main',
       headRevision: 'b-head',
@@ -49,6 +53,8 @@ describe('prepareAllStructuralFacts', () => {
 
     const pullRequestA: NormalizedPullRequest = {
       id: 'pr-a',
+      title: 'Pull request pr-a',
+      webUrl: 'https://github.com/o/r/pull/pr-a',
       sourceBranch: 'feature/a',
       targetBranch: 'main',
       headRevision: 'a-head',
@@ -60,6 +66,8 @@ describe('prepareAllStructuralFacts', () => {
     };
     const pullRequestB: NormalizedPullRequest = {
       id: 'pr-b',
+      title: 'Pull request pr-b',
+      webUrl: 'https://github.com/o/r/pull/pr-b',
       sourceBranch: 'feature/b',
       targetBranch: 'main',
       headRevision: 'b-head',
@@ -89,6 +97,8 @@ describe('prepareAllStructuralFacts', () => {
 
     const pullRequest: NormalizedPullRequest = {
       id: 'pr-a',
+      title: 'Pull request pr-a',
+      webUrl: 'https://github.com/o/r/pull/pr-a',
       sourceBranch: 'feature/a',
       targetBranch: 'main',
       headRevision: 'a-head',

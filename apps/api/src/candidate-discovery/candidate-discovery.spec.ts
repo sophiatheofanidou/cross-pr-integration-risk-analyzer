@@ -10,6 +10,8 @@ const analyzer = new TypeScriptStructuralAnalyzer();
 function pullRequest(id: string, headRevision: string, path: string): NormalizedPullRequest {
   return {
     id,
+    title: `Pull request ${id}`,
+    webUrl: `https://github.com/o/r/pull/${id}`,
     sourceBranch: `feature/${id}`,
     targetBranch: 'main',
     headRevision,
@@ -69,6 +71,8 @@ describe('discoverCandidates', () => {
 
     const pullRequestA: NormalizedPullRequest = {
       id: 'pr-a',
+      title: 'Pull request pr-a',
+      webUrl: 'https://github.com/o/r/pull/pr-a',
       sourceBranch: 'feature/a',
       targetBranch: 'main',
       headRevision: 'a-head',

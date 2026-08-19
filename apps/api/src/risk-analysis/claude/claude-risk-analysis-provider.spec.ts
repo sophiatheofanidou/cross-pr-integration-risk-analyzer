@@ -30,11 +30,10 @@ describe('ClaudeRiskAnalysisProvider', () => {
         type: 'text',
         text: JSON.stringify({
         status: 'RISK_IDENTIFIED',
-        explanation: 'The caller may rely on the previous signature.',
-        changedAssumption: 'The function now requires a currency.',
+        potentialIntegrationProblem: 'PR A changes the previous signature that PR B still relies on.',
+        reviewerAction: 'Verify every combined caller.',
         confidence: 'HIGH',
         severity: 'MEDIUM',
-        reviewerCheck: 'Verify every combined caller.',
         }),
       }],
     });
@@ -46,11 +45,10 @@ describe('ClaudeRiskAnalysisProvider', () => {
 
     await expect(provider.assess(prompt)).resolves.toEqual({
       status: 'RISK_IDENTIFIED',
-      explanation: 'The caller may rely on the previous signature.',
-      changedAssumption: 'The function now requires a currency.',
+      potentialIntegrationProblem: 'PR A changes the previous signature that PR B still relies on.',
+      reviewerAction: 'Verify every combined caller.',
       confidence: 'HIGH',
       severity: 'MEDIUM',
-      reviewerCheck: 'Verify every combined caller.',
     });
     expect(create).toHaveBeenCalledOnce();
     expect(create).toHaveBeenCalledWith(

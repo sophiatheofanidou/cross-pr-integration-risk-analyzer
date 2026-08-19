@@ -29,6 +29,10 @@ describe.runIf(smokeEnabled)('ClaudeRiskAnalysisProvider real-provider smoke tes
     });
 
     expect(['RISK_IDENTIFIED', 'NO_RISK_IDENTIFIED']).toContain(result.status);
-    expect(result.explanation.length).toBeGreaterThan(0);
+    const explanationLength =
+      result.status === 'RISK_IDENTIFIED'
+        ? result.potentialIntegrationProblem.length
+        : result.noRiskExplanation.length;
+    expect(explanationLength).toBeGreaterThan(0);
   });
 });

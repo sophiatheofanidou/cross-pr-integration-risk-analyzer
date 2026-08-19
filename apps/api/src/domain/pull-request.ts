@@ -40,6 +40,10 @@ export interface ChangedFile {
  */
 export interface NormalizedPullRequest {
   readonly id: string;
+  /** The pull request's provider-supplied display title. */
+  readonly title: string;
+  /** The pull request's provider-supplied web URL, for reviewer-facing links. */
+  readonly webUrl: string;
   readonly sourceBranch: string;
   readonly targetBranch: string;
   /**

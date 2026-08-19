@@ -20,7 +20,7 @@ This reduces unnecessary AI calls, produces reproducible evidence and preserves 
 
 **Status:** Accepted
 
-The system never automatically approves, rejects or merges pull requests. It provides evidence, explanations and reviewer checks.
+The system never automatically approves, rejects or merges pull requests. It provides evidence, explanations and reviewer actions.
 
 ---
 
@@ -177,6 +177,18 @@ The scenarios act as regression tests and as the foundation of the final product
 **Status:** Accepted
 
 The first implementation prioritizes a complete, explainable and demonstrable workflow rather than production-scale coverage or optimization.
+
+---
+
+## ADR-017 — Reviewer-Facing Risk Result Contract
+
+**Status:** Accepted
+
+Each assessable Candidate Pair returns exactly one validated result. An identified risk contains a bounded `potentialIntegrationProblem`, one concrete `reviewerAction`, severity and confidence. A no-risk result contains a bounded `noRiskExplanation` and confidence.
+
+The risk explanation must connect both pull requests, describe the plausible incompatibility or risky combined behavior and identify the potentially affected behavior or flow. It does not presume that either pull request necessarily changed an assumption. The reviewer action is imperative and grounded in supplied evidence when possible; it is not a remediation proposal.
+
+Provider failures are represented as assessment-not-run for only the affected pair, while pair-relevant context warnings remain visible. Unexpected internal failures still fail the request instead of being mislabeled as provider failures.
 
 ---
 

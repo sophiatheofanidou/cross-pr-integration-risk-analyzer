@@ -94,6 +94,8 @@ function normalizePullRequest(
 ): NormalizedPullRequest {
   return {
     id: String(summary.number),
+    title: summary.title,
+    webUrl: summary.html_url,
     sourceBranch: summary.head.ref,
     targetBranch: summary.base.ref,
     headRevision: summary.head.sha,

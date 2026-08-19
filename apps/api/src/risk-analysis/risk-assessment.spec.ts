@@ -5,29 +5,35 @@ import type { NormalizedPullRequest } from '../domain/pull-request.js';
 import type { RiskResult } from '../domain/risk-result.js';
 import { TypeScriptStructuralAnalyzer } from '../structural-analysis/typescript/typescript-structural-analyzer.js';
 import { FakeRiskAnalysisProvider } from './__fixtures__/fake-risk-analysis-provider.js';
-import { assessCandidatePairs } from './risk-assessment.js';
+import {
+  assessCandidatePair,
+  assessCandidatePairs,
+  RiskAnalysisProviderInvocationError,
+} from './risk-assessment.js';
 
 const repository = { owner: 'owner', repo: 'repository' };
 const analyzer = new TypeScriptStructuralAnalyzer();
 
 const riskIdentified: RiskResult = {
   status: 'RISK_IDENTIFIED',
-  explanation: 'The caller may still rely on the previous signature.',
-  changedAssumption: 'processPayment now requires a currency argument.',
+  potentialIntegrationProblem:
+    'PR A changes processPayment to require a currency argument, which PR B still calls without one.',
+  reviewerAction: 'Verify every combined call supplies a supported currency.',
   confidence: 'HIGH',
   severity: 'MEDIUM',
-  reviewerCheck: 'Verify every combined call supplies a supported currency.',
 };
 
 const noRiskIdentified: RiskResult = {
   status: 'NO_RISK_IDENTIFIED',
-  explanation: 'The same name belongs to unrelated local functions.',
+  noRiskExplanation: 'The same name belongs to unrelated local functions.',
   confidence: 'HIGH',
 };
 
 function addedPullRequest(id: string, path: string): NormalizedPullRequest {
   return {
     id,
+    title: `Pull request ${id}`,
+    webUrl: `https://github.com/o/r/pull/${id}`,
     sourceBranch: `feature/${id}`,
     targetBranch: 'main',
     headRevision: `${id}-head`,
@@ -218,7 +224,48 @@ describe('assessCandidatePairs', () => {
       noRiskIdentified,
     ]);
 
-    await expect(assessCandidatePairs(run, provider)).rejects.toBe(providerFailure);
+    await expect(assessCandidatePairs(run, provider)).rejects.toMatchObject({
+      name: 'RiskAnalysisProviderInvocationError',
+      cause: providerFailure,
+    } satisfies Partial<RiskAnalysisProviderInvocationError>);
     expect(provider.calls).toHaveLength(2);
+  });
+
+  it('carries pair-relevant context warnings when the provider invocation fails', async () => {
+    const sourceControlProvider = new FakeSourceControlProvider();
+    sourceControlProvider.setFile(
+      'pr-a-head',
+      'src/payment.ts',
+      'export function processPayment() { return 1; }\n',
+    );
+    sourceControlProvider.setFile(
+      'pr-b-head',
+      'src/checkout.ts',
+      'const result = processPayment();\n',
+    );
+    const pullRequestA: NormalizedPullRequest = {
+      ...addedPullRequest('pr-a', 'src/payment.ts'),
+      changedFiles: [
+        { path: 'src/payment.ts', changeType: 'ADDED' },
+        { path: 'src/view.tsx', changeType: 'ADDED' },
+      ],
+    };
+    const run = await discoverCandidates(
+      [pullRequestA, addedPullRequest('pr-b', 'src/checkout.ts')],
+      repository,
+      sourceControlProvider,
+      analyzer,
+    );
+    const providerFailure = new Error('provider unavailable');
+    const provider = new FakeRiskAnalysisProvider([providerFailure]);
+
+    await expect(assessCandidatePair(run.result.candidatePairs[0]!, run, provider)).rejects.toMatchObject({
+      name: 'RiskAnalysisProviderInvocationError',
+      cause: providerFailure,
+      warnings: [expect.objectContaining({
+        reason: 'UNSUPPORTED_FILE_EXTENSION',
+        pullRequestId: 'pr-a',
+      })],
+    });
   });
 });

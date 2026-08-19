@@ -29,6 +29,8 @@ export const GITHUB_API_VERSION = '2026-03-10';
  */
 export const pullRequestSummarySchema = z.object({
   number: z.number(),
+  title: z.string(),
+  html_url: z.string(),
   state: z.enum(['open', 'closed']),
   draft: z.boolean(),
   head: z.object({

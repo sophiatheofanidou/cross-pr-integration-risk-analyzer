@@ -216,8 +216,8 @@ Interpret each Candidate Pair with sufficient context through one structured Cla
 - do not invoke the provider for a Candidate Pair whose context failed the minimum-context check,
 - define one Zod-validated output schema,
 - return `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
-- include explanation and confidence,
-- include changed assumption, severity and reviewer check for identified risks,
+- include a bounded no-risk explanation and confidence for compatible or coincidental pairs,
+- include a bounded potential integration problem, severity, confidence and concrete reviewer action for identified risks,
 - preserve analysis warnings,
 - use a fake provider in normal tests,
 - provide one opt-in real-provider smoke test.
@@ -274,7 +274,7 @@ Expose the working pipeline through one backend operation and one useful Angular
 - risk/no-risk results,
 - assessment-not-run state for discovered pairs without sufficient context,
 - Technical Term Match evidence,
-- confidence, severity and reviewer checks,
+- confidence, severity and reviewer actions,
 - visible analysis warnings,
 - empty and error states.
 

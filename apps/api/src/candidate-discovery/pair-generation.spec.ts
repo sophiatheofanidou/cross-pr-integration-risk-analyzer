@@ -5,6 +5,8 @@ import { generatePossiblePairs } from './pair-generation.js';
 function pullRequest(id: string, targetBranch: string): NormalizedPullRequest {
   return {
     id,
+    title: `Pull request ${id}`,
+    webUrl: `https://github.com/o/r/pull/${id}`,
     sourceBranch: `feature/${id}`,
     targetBranch,
     headRevision: `${id}-head`,

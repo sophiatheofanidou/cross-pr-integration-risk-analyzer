@@ -159,11 +159,11 @@ Each Candidate Pair with sufficient context receives one Claude assessment.
 The validated result contains:
 
 - `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
-- explanation,
-- changed assumption when a risk is identified,
+- potential integration problem when a risk is identified,
+- no-risk explanation when no risk is identified,
 - confidence,
 - severity when a risk is identified,
-- recommended reviewer check when a risk is identified.
+- concrete reviewer action when a risk is identified.
 
 The AI distinguishes deterministic evidence from semantic inference. It does not confirm defects or make merge decisions.
 
@@ -185,7 +185,7 @@ The Angular interface provides:
 - risk results,
 - Technical Term Match evidence,
 - confidence and severity,
-- reviewer checks,
+- reviewer actions,
 - visible analysis warnings,
 - a clear empty state when no Candidate Pairs are found.
 
@@ -244,7 +244,7 @@ The MVP is successful when it can demonstrate that:
 - a modified file with a missing or insufficient provider patch can still participate through bounded local diff reconstruction,
 - Claude identifies a designed integration-risk scenario that is not an ordinary Git conflict,
 - Claude dismisses a structurally related but semantically unrelated pair,
-- evidence and reviewer checks are understandable in the UI,
+- evidence, potential integration problems and reviewer actions are understandable in the UI,
 - unsupported analysis is visible rather than silently ignored,
 - a completed analysis with no Candidate Pairs is presented as a valid result,
 - the complete workflow runs without repository-wide retrieval.

@@ -14,6 +14,7 @@ import type {
 
 export class FakeSourceControlProvider implements SourceControlProvider {
   private readonly contentByKey = new Map<string, FileContentResult>();
+  private eligiblePullRequests: readonly NormalizedPullRequest[] | Error | undefined;
   readonly requestedKeys: string[] = [];
 
   private key(path: string, revision: string): string {
@@ -28,8 +29,19 @@ export class FakeSourceControlProvider implements SourceControlProvider {
     this.contentByKey.set(this.key(path, revision), result);
   }
 
-  getEligiblePullRequests(): Promise<readonly NormalizedPullRequest[]> {
-    throw new Error('FakeSourceControlProvider.getEligiblePullRequests is not used by these tests');
+  /** Configures the result of `getEligiblePullRequests`; unused by default. */
+  setEligiblePullRequests(pullRequests: readonly NormalizedPullRequest[] | Error): void {
+    this.eligiblePullRequests = pullRequests;
+  }
+
+  async getEligiblePullRequests(): Promise<readonly NormalizedPullRequest[]> {
+    if (this.eligiblePullRequests === undefined) {
+      throw new Error('FakeSourceControlProvider.getEligiblePullRequests is not used by these tests');
+    }
+    if (this.eligiblePullRequests instanceof Error) {
+      throw this.eligiblePullRequests;
+    }
+    return this.eligiblePullRequests;
   }
 
   async getFileContent(

@@ -11,6 +11,8 @@ const analyzer = new TypeScriptStructuralAnalyzer();
 function pullRequest(id: string, headRevision: string, path: string): NormalizedPullRequest {
   return {
     id,
+    title: `Pull request ${id}`,
+    webUrl: `https://github.com/o/r/pull/${id}`,
     sourceBranch: `feature/${id}`,
     targetBranch: 'main',
     headRevision,
@@ -41,6 +43,8 @@ async function discoverOneCandidatePair() {
   const pullRequestA = pullRequest('pr-a', 'a-head', 'src/payment.service.ts');
   const pullRequestB: NormalizedPullRequest = {
     id: 'pr-b',
+    title: 'Pull request pr-b',
+    webUrl: 'https://github.com/o/r/pull/pr-b',
     sourceBranch: 'feature/pr-b',
     targetBranch: 'main',
     headRevision: 'b-head',
@@ -89,6 +93,8 @@ async function discoverTwoDirectionMatchCandidatePair() {
 
   const pullRequestA: NormalizedPullRequest = {
     id: 'pr-a',
+    title: 'Pull request pr-a',
+    webUrl: 'https://github.com/o/r/pull/pr-a',
     sourceBranch: 'feature/pr-a',
     targetBranch: 'main',
     headRevision: 'a-head',
@@ -103,6 +109,8 @@ async function discoverTwoDirectionMatchCandidatePair() {
   };
   const pullRequestB: NormalizedPullRequest = {
     id: 'pr-b',
+    title: 'Pull request pr-b',
+    webUrl: 'https://github.com/o/r/pull/pr-b',
     sourceBranch: 'feature/pr-b',
     targetBranch: 'main',
     headRevision: 'b-head',
@@ -151,6 +159,8 @@ describe('retrieveContext', () => {
     // A third, unrelated pull request whose warning must not leak into this pair's context.
     const pullRequestC: NormalizedPullRequest = {
       id: 'pr-c',
+      title: 'Pull request pr-c',
+      webUrl: 'https://github.com/o/r/pull/pr-c',
       sourceBranch: 'feature/c',
       targetBranch: 'main',
       headRevision: 'c-head',

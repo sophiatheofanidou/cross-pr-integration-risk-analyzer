@@ -22,6 +22,8 @@ function changedTerm(name: string, line: number): ChangedTermAssociation {
 function pullRequest(id: string): NormalizedPullRequest {
   return {
     id,
+    title: `Pull request ${id}`,
+    webUrl: `https://github.com/o/r/pull/${id}`,
     sourceBranch: `feature/${id}`,
     targetBranch: 'main',
     headRevision: `${id}-head`,

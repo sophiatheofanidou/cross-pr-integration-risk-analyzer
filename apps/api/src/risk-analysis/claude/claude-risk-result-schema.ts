@@ -2,8 +2,19 @@
 
 import { z } from 'zod';
 import type { RiskResult } from '../../domain/risk-result.js';
+import {
+  NO_RISK_EXPLANATION_MAX_LENGTH,
+  POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH,
+  REVIEWER_ACTION_MAX_LENGTH,
+} from '../../domain/risk-result.js';
 
-const requiredText = z.string().trim().min(1);
+export {
+  NO_RISK_EXPLANATION_MAX_LENGTH,
+  POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH,
+  REVIEWER_ACTION_MAX_LENGTH,
+} from '../../domain/risk-result.js';
+
+const requiredText = (maxLength: number) => z.string().trim().min(1).max(maxLength);
 const confidenceSchema = z
   .enum(['LOW', 'MEDIUM', 'HIGH'])
   .describe('Evidential support for the assessment, not potential impact');
@@ -15,22 +26,21 @@ export const claudeRiskResultSchema = z.discriminatedUnion('status', [
   z
     .object({
       status: z.literal('RISK_IDENTIFIED'),
-      explanation: requiredText.describe(
-        'Evidence-based explanation that distinguishes supplied facts from semantic inference',
+      potentialIntegrationProblem: requiredText(POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH).describe(
+        'A short, self-contained reviewer-facing analysis explaining how the two pull requests are technically connected, the incompatibility or risky interaction that may arise when combined, and the behavior or flow that may be affected if both are merged',
       ),
-      changedAssumption: requiredText.describe(
-        'The assumption changed by one pull request that the other may still rely on',
+      reviewerAction: requiredText(REVIEWER_ACTION_MAX_LENGTH).describe(
+        'One concrete imperative review step, naming the relevant supplied file, symbol or data flow when the evidence supports it',
       ),
       confidence: confidenceSchema,
       severity: severitySchema,
-      reviewerCheck: requiredText.describe('One targeted check for a human reviewer'),
     })
     .strict(),
   z
     .object({
       status: z.literal('NO_RISK_IDENTIFIED'),
-      explanation: requiredText.describe(
-        'Why the supplied structural relationship appears compatible or coincidental',
+      noRiskExplanation: requiredText(NO_RISK_EXPLANATION_MAX_LENGTH).describe(
+        'Why the supplied deterministic relationship appears compatible or coincidental',
       ),
       confidence: confidenceSchema,
     })
@@ -43,17 +53,16 @@ export function normalizeClaudeRiskResult(
   if (output.status === 'RISK_IDENTIFIED') {
     return {
       status: output.status,
-      explanation: output.explanation,
-      changedAssumption: output.changedAssumption,
+      potentialIntegrationProblem: output.potentialIntegrationProblem,
+      reviewerAction: output.reviewerAction,
       confidence: output.confidence,
       severity: output.severity,
-      reviewerCheck: output.reviewerCheck,
     };
   }
 
   return {
     status: output.status,
-    explanation: output.explanation,
+    noRiskExplanation: output.noRiskExplanation,
     confidence: output.confidence,
   };
 }

@@ -8,31 +8,36 @@ import {
 } from './github-response-schemas.js';
 
 describe('pullRequestSummarySchema', () => {
-  it('accepts a valid focused payload and strips unrelated fields', () => {
+  it('accepts a valid focused payload, validates title/html_url and strips unrelated fields', () => {
     const result = pullRequestSummarySchema.parse({
       number: 42,
+      title: 'Add payment authorization',
+      html_url: 'https://github.com/o/r/pull/42',
       state: 'open',
       draft: false,
       head: { ref: 'feature/x', sha: 'abc123', label: 'octocat:feature/x' },
       base: { ref: 'main', sha: 'def456' },
-      title: 'Unrelated field the adapter does not use',
       url: 'https://api.github.com/repos/o/r/pulls/42',
     });
 
     expect(result).toEqual({
       number: 42,
+      title: 'Add payment authorization',
+      html_url: 'https://github.com/o/r/pull/42',
       state: 'open',
       draft: false,
       head: { ref: 'feature/x', sha: 'abc123' },
       base: { ref: 'main', sha: 'def456' },
     });
-    expect(result).not.toHaveProperty('title');
+    expect(result).not.toHaveProperty('url');
     expect((result.head as Record<string, unknown>)).not.toHaveProperty('label');
   });
 
   it('rejects a malformed payload and reports the failing path', () => {
     const parsed = pullRequestSummarySchema.safeParse({
       number: 42,
+      title: 'Add payment authorization',
+      html_url: 'https://github.com/o/r/pull/42',
       state: 'open',
       draft: false,
       head: { ref: 'feature/x' },
@@ -43,6 +48,27 @@ describe('pullRequestSummarySchema', () => {
     if (!parsed.success) {
       expect(parsed.error.issues.some((issue) => issue.path.join('.') === 'head.sha')).toBe(true);
     }
+  });
+
+  it('rejects a payload missing title or html_url', () => {
+    const base = {
+      number: 42,
+      state: 'open' as const,
+      draft: false,
+      head: { ref: 'feature/x', sha: 'abc123' },
+      base: { ref: 'main', sha: 'def456' },
+    };
+
+    expect(pullRequestSummarySchema.safeParse(base).success).toBe(false);
+    expect(
+      pullRequestSummarySchema.safeParse({ ...base, title: 'Add payment authorization' }).success,
+    ).toBe(false);
+    expect(
+      pullRequestSummarySchema.safeParse({
+        ...base,
+        html_url: 'https://github.com/o/r/pull/42',
+      }).success,
+    ).toBe(false);
   });
 });
 

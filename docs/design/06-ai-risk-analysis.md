@@ -87,17 +87,19 @@ The provider returns one validated structured result:
 ```text
 Risk Assessment
 ├── Status: RISK_IDENTIFIED | NO_RISK_IDENTIFIED
-├── Explanation
-├── Changed Assumption?
+├── Potential Integration Problem? (risk only)
+├── No-Risk Explanation? (no risk only)
 ├── Confidence: LOW | MEDIUM | HIGH
 ├── Severity: LOW | MEDIUM | HIGH ?
-└── Reviewer Check?
+└── Reviewer Action? (risk only)
 ```
 
 Rules:
 
-- `Explanation` is required for both statuses.
-- `Changed Assumption`, `Severity` and `Reviewer Check` are required when a risk is identified.
+- `Potential Integration Problem`, `Severity` and `Reviewer Action` are required when a risk is identified.
+- `Potential Integration Problem` is limited to 2,000 characters and preferably 2–5 sentences. It briefly explains how both PRs are technically connected, the plausible incompatibility or risky combined behavior, and the affected behavior or flow. It does not need to claim that either PR changed an assumption.
+- `Reviewer Action` is limited to 600 characters and contains one concrete imperative review step grounded in the supplied file, symbol or data flow when the evidence supports it.
+- `No-Risk Explanation` is limited to 1,200 characters. It is required when no risk is identified and briefly explains why the deterministic relationship appears compatible or coincidental.
 - `Confidence` describes evidential support, not impact.
 - `Severity` describes potential impact if the risk is real.
 - non-critical analysis warnings may reduce confidence and must not disappear from the reviewer-facing result.
@@ -117,7 +119,7 @@ The AI does not:
 - establish textual mergeability,
 - guarantee that a defect exists.
 
-The report gives the reviewer a concrete relationship, explanation and targeted check.
+The report gives the reviewer a concrete relationship, a bounded explanation and a targeted action.
 
 ---
 

@@ -312,7 +312,7 @@ export function retrieveContext(
           relatedPullRequestId: pullRequestB.id,
           reason: 'ASSESSMENT_NOT_RUN',
           message:
-            'No Technical Term Match retained sufficient context; AI assessment was not run for this Candidate Pair',
+            'No Technical Term Match retained sufficient context; risk assessment was not run for this Candidate Pair',
         },
         ...relevantDiscoveryWarnings,
         ...omittedWarnings,

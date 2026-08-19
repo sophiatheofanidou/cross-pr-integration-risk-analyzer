@@ -10,6 +10,8 @@ const analyzer = new TypeScriptStructuralAnalyzer();
 function pullRequest(): NormalizedPullRequest {
   return {
     id: 'pr-1',
+    title: 'Pull request pr-1',
+    webUrl: 'https://github.com/o/r/pull/pr-1',
     sourceBranch: 'feature/x',
     targetBranch: 'main',
     headRevision: 'head-sha',

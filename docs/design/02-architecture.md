@@ -195,9 +195,9 @@ Responsible for:
 
 - interpreting the relationship between changes,
 - identifying plausible integration-risk scenarios,
-- reasoning about changed assumptions,
+- explaining the plausible incompatibility or risky combined behavior,
 - estimating confidence and severity,
-- recommending targeted reviewer checks.
+- recommending concrete reviewer actions.
 
 This separation keeps factual analysis reproducible while reserving AI for semantic reasoning.
 

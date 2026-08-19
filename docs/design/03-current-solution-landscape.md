@@ -152,7 +152,7 @@ ConE is important for two reasons:
 1. it demonstrates that systematic discovery across concurrent pull requests has practical value;
 2. its contribution depended heavily on suppressing false alarms, not merely finding more overlaps.
 
-It did not perform AI semantic reasoning about the changed assumptions behind a pair.
+It did not perform AI semantic reasoning about plausible incompatibilities in the combined changes of a pair.
 
 ### [PR Conflict Detector](https://github.com/github-community-projects/pr-conflict-detector)
 
@@ -258,6 +258,6 @@ This is a genuine but narrow workflow gap. It should not be inflated into a broa
 
 The most defensible product promise is:
 
-> Find technically related pull-request pairs that reviewers are unlikely to inspect together by default, and explain the plausible changed assumption that connects them.
+> Find technically related pull-request pairs that reviewers are unlikely to inspect together by default, and explain the plausible incompatibility or risky combined behavior that connects them.
 
 The strongest differentiation is not that the project can reason about two changes. It is that it can decide **which pairs deserve that reasoning**, using a bounded and repeatable process.

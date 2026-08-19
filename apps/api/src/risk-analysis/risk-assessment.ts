@@ -29,11 +29,66 @@ export type CandidatePairAssessment =
     };
 
 /**
+ * Provider-neutral marker for a failure raised specifically while invoking
+ * `RiskAnalysisProvider.assess`. Pair-relevant warnings are carried with the
+ * failure so an application boundary may preserve them in a partial report.
+ * Errors from Context Retrieval or prompt construction are deliberately not
+ * wrapped and continue to propagate as unexpected internal failures.
+ */
+export class RiskAnalysisProviderInvocationError extends Error {
+  readonly warnings: readonly AnalysisWarning[];
+
+  constructor(warnings: readonly AnalysisWarning[], cause: unknown) {
+    super('Risk analysis provider invocation failed', { cause });
+    this.name = 'RiskAnalysisProviderInvocationError';
+    this.warnings = warnings;
+  }
+}
+
+/**
+ * Assesses one Candidate Pair: checks Context Retrieval sufficiency, and,
+ * only when sufficient, calls the provider exactly once. Does not catch a
+ * provider failure; callers that need to continue past a per-pair failure
+ * (the M5 application orchestration boundary) catch it themselves around
+ * this call.
+ */
+export async function assessCandidatePair(
+  candidatePair: CandidatePair,
+  run: CandidateDiscoveryRun,
+  provider: RiskAnalysisProvider,
+  bounds?: ContextRetrievalBounds,
+): Promise<CandidatePairAssessment> {
+  const contextOutcome = retrieveContext(candidatePair, run, bounds);
+  if (!contextOutcome.sufficientContext) {
+    return {
+      kind: 'NOT_ASSESSED',
+      candidatePair,
+      warnings: contextOutcome.warnings,
+    };
+  }
+
+  const prompt = buildRiskAssessmentPrompt(contextOutcome.context);
+  let riskResult: RiskResult;
+  try {
+    riskResult = await provider.assess(prompt);
+  } catch (error) {
+    throw new RiskAnalysisProviderInvocationError(contextOutcome.context.warnings, error);
+  }
+  return {
+    kind: 'ASSESSED',
+    candidatePair,
+    riskResult,
+    warnings: contextOutcome.context.warnings,
+  };
+}
+
+/**
  * Assesses Candidate Pairs in their deterministic discovery order. The
  * provider is called exactly once for each pair whose Context Retrieval result
  * is sufficient, and never for an insufficient pair. A provider failure rejects
  * the run explicitly; partial provider-failure results and continuation policy
- * belong to the future application orchestration boundary.
+ * belong to the M5 application orchestration boundary
+ * (see `assessCandidatePair`, which that boundary calls per pair instead).
  */
 export async function assessCandidatePairs(
   run: CandidateDiscoveryRun,
@@ -43,23 +98,7 @@ export async function assessCandidatePairs(
   const assessments: CandidatePairAssessment[] = [];
 
   for (const candidatePair of run.result.candidatePairs) {
-    const contextOutcome = retrieveContext(candidatePair, run, bounds);
-    if (!contextOutcome.sufficientContext) {
-      assessments.push({
-        kind: 'NOT_ASSESSED',
-        candidatePair,
-        warnings: contextOutcome.warnings,
-      });
-      continue;
-    }
-
-    const riskResult = await provider.assess(buildRiskAssessmentPrompt(contextOutcome.context));
-    assessments.push({
-      kind: 'ASSESSED',
-      candidatePair,
-      riskResult,
-      warnings: contextOutcome.context.warnings,
-    });
+    assessments.push(await assessCandidatePair(candidatePair, run, provider, bounds));
   }
 
   return assessments;

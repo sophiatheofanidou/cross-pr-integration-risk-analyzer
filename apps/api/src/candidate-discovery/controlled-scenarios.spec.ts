@@ -30,6 +30,8 @@ function pullRequest(
 ): NormalizedPullRequest {
   return {
     id,
+    title: `Pull request ${id}`,
+    webUrl: `https://github.com/o/r/pull/${id}`,
     sourceBranch: `feature/${id}`,
     targetBranch: 'main',
     headRevision,

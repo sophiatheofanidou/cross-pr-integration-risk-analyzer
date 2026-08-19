@@ -285,6 +285,8 @@ describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integrati
           [
             {
               number: 1,
+              title: 'Add payment authorization',
+              html_url: 'https://github.com/o/r/pull/1',
               state: 'open',
               draft: false,
               head: { ref: 'feature/one', sha: 'sha-1' },
@@ -292,6 +294,8 @@ describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integrati
             },
             {
               number: 2,
+              title: 'Draft: work in progress',
+              html_url: 'https://github.com/o/r/pull/2',
               state: 'open',
               draft: true,
               head: { ref: 'feature/two', sha: 'sha-2' },
@@ -310,6 +314,8 @@ describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integrati
         return jsonResponse([
           {
             number: 3,
+            title: 'Changes requested PR',
+            html_url: 'https://github.com/o/r/pull/3',
             state: 'open',
             draft: false,
             head: { ref: 'feature/three', sha: 'sha-3' },
@@ -372,6 +378,8 @@ describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integrati
     expect(result).toEqual([
       {
         id: '1',
+        title: 'Add payment authorization',
+        webUrl: 'https://github.com/o/r/pull/1',
         sourceBranch: 'feature/one',
         targetBranch: 'main',
         headRevision: 'sha-1',
@@ -408,6 +416,8 @@ describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integrati
         return jsonResponse([
           {
             number: 1,
+            title: 'Huge PR',
+            html_url: 'https://github.com/o/r/pull/1',
             state: 'open',
             draft: false,
             head: { ref: 'feature/huge', sha: 'sha-1' },
@@ -451,6 +461,8 @@ describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integrati
         return jsonResponse([
           {
             number: 1,
+            title: 'Add payment authorization',
+            html_url: 'https://github.com/o/r/pull/1',
             state: 'open',
             draft: false,
             head: { ref: 'feature/one', sha: 'sha-1' },
