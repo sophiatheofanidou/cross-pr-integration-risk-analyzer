@@ -30,15 +30,19 @@ Completed:
 - [x] project vision and initial design,
 - [x] repository foundation,
 - [x] `M1` initial domain contracts and test harness,
-- [x] `M2` GitHub integration and pull-request eligibility.
+- [x] `M2` GitHub integration and pull-request eligibility,
+- [x] `M3` controlled scenarios, structural Candidate Discovery and Context Retrieval,
+- [x] `M4` single Claude Risk Assessment.
 
-Approved transition:
+Current checkpoint:
 
 - the simplified MVP design and execution plan are approved by the project owner,
-- this documentation commit records that decision,
-- implementation resumes with the revised `M3` after the design commit.
+- `M3` is implemented and committed as `be419c6 feat: add TypeScript structural candidate discovery`,
+- the bounded AI code-search investigation is recorded in the following documentation commit `586c280`,
+- `M4` is implemented, independently reviewed and fully verified; its repository changes are awaiting the project owner's commit,
+- the next implementation milestone is `M5 — Minimal End-to-End Application`.
 
-The existing M1 domain contracts intentionally reflect the previous design and will be simplified as part of M3 before new Candidate Discovery behaviour is added.
+M3 replaced the obsolete M1 evidence and context contracts with the current `TechnicalTermMatch`, `CandidatePair`, source-location and `AnalysisWarning` model.
 
 ---
 
@@ -105,9 +109,9 @@ feat: retrieve and normalize eligible GitHub pull requests
 
 ---
 
-# Remaining MVP Milestones
-
 ## M3 — Controlled Scenarios and Structural Candidate Discovery
+
+**Status:** Complete
 
 ### Goal
 
@@ -199,6 +203,8 @@ feat: add TypeScript structural candidate discovery
 
 ## M4 — Single Claude Risk Assessment
 
+**Status:** Complete
+
 ### Goal
 
 Interpret each Candidate Pair with sufficient context through one structured Claude assessment.
@@ -242,6 +248,8 @@ feat: add Claude cross-PR risk assessment
 ```
 
 ---
+
+# Remaining MVP Milestones
 
 ## M5 — Minimal End-to-End Application
 
@@ -391,6 +399,4 @@ These exclusions control the first implementation only. The post-MVP roadmap pre
 
 # Immediate Next Step
 
-Review and commit the complete simplified-design diff.
-
-After approval, begin M3 with the controlled TypeScript scenarios and domain-contract simplification before installing or implementing Tree-sitter behaviour.
+Commit the reviewed M4 change set, then begin M5 by agreeing the HTTP/application composition boundary and the smallest useful end-to-end API slice.

@@ -3,3 +3,4 @@ export * from './source-location.js';
 export * from './technical-term-match.js';
 export * from './analysis-warning.js';
 export * from './candidate-pair.js';
+export * from './risk-result.js';

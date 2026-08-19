@@ -402,7 +402,8 @@ describe('Controlled scenario: discovered Candidate Pair without sufficient cont
     // ...but Context Retrieval reports it as not assessable, not as "no risk".
     expect(outcome.sufficientContext).toBe(false);
     if (!outcome.sufficientContext) {
-      expect(outcome.warning.reason).toBe('ASSESSMENT_NOT_RUN');
+      expect(outcome.warnings.some((warning) => warning.reason === 'ASSESSMENT_NOT_RUN')).toBe(true);
+      expect(outcome.warnings.some((warning) => warning.reason === 'CONTEXT_OMITTED')).toBe(true);
     }
   });
 });

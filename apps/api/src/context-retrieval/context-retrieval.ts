@@ -73,7 +73,10 @@ interface RetrievedContext {
  */
 type ContextRetrievalOutcome =
   | { readonly sufficientContext: true; readonly context: RetrievedContext }
-  | { readonly sufficientContext: false; readonly warning: AnalysisWarning };
+  | {
+      readonly sufficientContext: false;
+      readonly warnings: readonly [AnalysisWarning, ...AnalysisWarning[]];
+    };
 
 function toConciseMetadata(pullRequest: NormalizedPullRequest): ConcisePullRequestMetadata {
   return {
@@ -296,22 +299,26 @@ export function retrieveContext(
     totalLength += matchLength;
   }
 
-  if (includedMatches.length === 0) {
-    return {
-      sufficientContext: false,
-      warning: {
-        pullRequestId: pullRequestA.id,
-        relatedPullRequestId: pullRequestB.id,
-        reason: 'ASSESSMENT_NOT_RUN',
-        message:
-          'No Technical Term Match retained sufficient context; AI assessment was not run for this Candidate Pair',
-      },
-    };
-  }
-
   const relevantDiscoveryWarnings = run.result.warnings.filter(
     (warning) => warning.pullRequestId === pullRequestA.id || warning.pullRequestId === pullRequestB.id,
   );
+
+  if (includedMatches.length === 0) {
+    return {
+      sufficientContext: false,
+      warnings: [
+        {
+          pullRequestId: pullRequestA.id,
+          relatedPullRequestId: pullRequestB.id,
+          reason: 'ASSESSMENT_NOT_RUN',
+          message:
+            'No Technical Term Match retained sufficient context; AI assessment was not run for this Candidate Pair',
+        },
+        ...relevantDiscoveryWarnings,
+        ...omittedWarnings,
+      ],
+    };
+  }
 
   return {
     sufficientContext: true,

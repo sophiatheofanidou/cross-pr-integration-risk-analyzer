@@ -189,9 +189,12 @@ describe('retrieveContext', () => {
 
     expect(outcome.sufficientContext).toBe(false);
     if (!outcome.sufficientContext) {
-      expect(outcome.warning.reason).toBe('ASSESSMENT_NOT_RUN');
-      expect(outcome.warning.pullRequestId).toBe(candidatePair.pullRequestA.id);
-      expect(outcome.warning.relatedPullRequestId).toBe(candidatePair.pullRequestB.id);
+      const assessmentNotRun = outcome.warnings.find(
+        (warning) => warning.reason === 'ASSESSMENT_NOT_RUN',
+      );
+      expect(assessmentNotRun?.pullRequestId).toBe(candidatePair.pullRequestA.id);
+      expect(assessmentNotRun?.relatedPullRequestId).toBe(candidatePair.pullRequestB.id);
+      expect(outcome.warnings.some((warning) => warning.reason === 'CONTEXT_OMITTED')).toBe(true);
     }
   });
 
@@ -222,7 +225,8 @@ describe('retrieveContext', () => {
 
       expect(tooSmall.sufficientContext).toBe(false);
       if (!tooSmall.sufficientContext) {
-        expect(tooSmall.warning.reason).toBe('ASSESSMENT_NOT_RUN');
+        expect(tooSmall.warnings.some((warning) => warning.reason === 'ASSESSMENT_NOT_RUN')).toBe(true);
+        expect(tooSmall.warnings.some((warning) => warning.reason === 'CONTEXT_OMITTED')).toBe(true);
       }
     });
 
