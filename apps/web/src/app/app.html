@@ -1,3 +1,53 @@
-<main>
-  <h1>{{ title() }}</h1>
-</main>
+<div class="window">
+  <header class="product-header">
+    <div>
+      <div class="kicker">Reviewer workspace</div>
+      <h1>Cross-PR Integration Risk Analyzer</h1>
+      <p class="description">
+        Analyze approved pull requests targeting the same branch for integration risks that ordinary Git conflict
+        detection may not reveal.
+      </p>
+    </div>
+    <aside class="advisory">
+      <strong>Human review stays in control</strong>
+      Findings are advisory. They identify technical relationships and focused reviewer checks; they never approve,
+      reject or merge a pull request.
+    </aside>
+  </header>
+
+  <app-analysis-form
+    [disabled]="state() === 'loading'"
+    (submitRequest)="onSubmit($event)"
+    (invalidSubmit)="onInvalidSubmit()"
+  />
+
+  <main class="content">
+    @switch (state()) {
+      @case ('loading') {
+        <div class="alt" role="status" aria-live="polite">
+          <span class="label">Candidate Discovery in progress</span>
+          <h2>Analyzing approved pull requests</h2>
+          <p>Technical Term Matches are identified before any assessment is requested.</p>
+          <div class="progress" role="progressbar" aria-label="Analysis progress">
+            <span class="progress-fill"></span>
+          </div>
+        </div>
+      }
+      @case ('error') {
+        <div class="alt" role="alert" aria-live="assertive">
+          <span class="status-pill risk">Operation failed</span>
+          <h2>Repository analysis could not complete</h2>
+          <p>{{ errorMessage() }}</p>
+          <div>
+            <button type="button" class="retry" (click)="retry()">Try again</button>
+          </div>
+        </div>
+      }
+      @case ('success') {
+        @if (report(); as currentReport) {
+          <app-analysis-report [report]="currentReport" />
+        }
+      }
+    }
+  </main>
+</div>

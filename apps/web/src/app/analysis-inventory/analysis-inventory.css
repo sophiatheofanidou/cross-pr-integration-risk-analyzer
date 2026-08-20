@@ -1,0 +1,173 @@
+:host {
+  display: block;
+}
+
+.tabs {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.tab {
+  background: var(--paper);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font: 500 12px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.overview,
+.table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.overview th,
+.overview td,
+.table th,
+.table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview th,
+.table th {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.overview tr:last-child td,
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.overview-pair {
+  min-width: 210px;
+  line-height: 1.5;
+}
+
+.evidence-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.overview tbody tr.row-risk td:first-child {
+  border-left: 4px solid var(--risk);
+}
+
+.overview tbody tr.row-safe td:first-child {
+  border-left: 4px solid var(--safe);
+}
+
+.overview tbody tr.row-pending td:first-child {
+  border-left: 4px solid var(--warning);
+}
+
+.overview-pr {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.overview-pr:hover,
+.overview-pr:focus-visible {
+  text-decoration: underline;
+}
+
+.pr-number {
+  font-weight: 600;
+}
+
+.overview-secondary {
+  color: var(--muted);
+  display: block;
+  margin-top: 3px;
+}
+
+.overview-connector {
+  color: var(--muted);
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  margin: 3px 0;
+  text-transform: uppercase;
+}
+
+.assessment-complete {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.limited {
+  color: var(--warning-ink);
+  font-weight: 500;
+}
+
+.status-pill {
+  display: inline-block;
+  border: 1px solid currentColor;
+  padding: 5px 9px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  border-radius: 999px;
+  color: var(--ink);
+}
+
+.status-pill.risk {
+  color: var(--risk-ink);
+  border-color: var(--risk);
+  background: var(--risk-soft);
+}
+
+.status-pill.safe {
+  color: var(--safe-ink);
+  border-color: var(--safe);
+  background: var(--safe-soft);
+}
+
+code {
+  color: #294a57;
+  background: #e6edef;
+  padding: 1px 4px;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.table tbody td:first-child {
+  font-weight: 600;
+}
+
+.table a {
+  color: inherit;
+}

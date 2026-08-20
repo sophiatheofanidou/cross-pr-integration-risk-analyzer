@@ -1,0 +1,145 @@
+<ng-template #prLink let-pr="pr">
+  <a class="pr-link" [href]="pr.webUrl" target="_blank" rel="noopener noreferrer">
+    <span class="pr-number">#{{ pr.id }}</span> {{ pr.title }}
+  </a>
+</ng-template>
+
+<ng-template #evidence let-matches="matches" let-label="label">
+  <span class="evidence-label">{{ label }}</span>
+  @for (match of matches; track match.technicalTerm + match.changedRegionLocation.filePath + $index) {
+    <div class="match">
+      <strong><code>{{ match.technicalTerm }}</code></strong><br />
+      @let location = matchLocationLabel(match);
+      Changed in #{{ location.changedPullRequestId }} ·
+      <code>{{ location.changedFilePath }}:{{ location.changedStartLine }}</code
+      ><br />
+      Matched in #{{ location.matchingPullRequestId }} ·
+      <code>{{ location.matchingFilePath }}:{{ location.matchingStartLine }}</code>
+    </div>
+  }
+</ng-template>
+
+@let assessment = pair().assessment;
+
+@switch (variant()) {
+  @case ('risk') {
+    @if (assessment.state === 'COMPLETED' && assessment.result.status === 'RISK_IDENTIFIED') {
+      <article class="pair pair-risk">
+        <div class="inference">
+          <div class="pair-header">
+            <h3>
+              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
+              <span class="pair-connector">paired with</span>
+              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
+            </h3>
+            <span class="status-pill risk">Risk identified</span>
+          </div>
+          <p class="priority">
+            Severity:
+            <strong [class]="severityClass(assessment.result.severity)">{{ titleCase(assessment.result.severity) }}</strong>
+            · Confidence:
+            <strong [class]="confidenceClass(assessment.result.confidence)">{{ titleCase(assessment.result.confidence) }}</strong>
+          </p>
+          <span class="problem-label">Potential integration problem</span>
+          <p
+            class="copy"
+            [class.clamped]="isLongExplanation() && !explanationExpanded()"
+            [id]="problemTextId"
+          >
+            {{ assessment.result.potentialIntegrationProblem }}
+          </p>
+          @if (isLongExplanation()) {
+            <button
+              type="button"
+              class="link-button"
+              [attr.aria-expanded]="explanationExpanded()"
+              [attr.aria-controls]="problemTextId"
+              (click)="toggleExplanation()"
+            >
+              {{ explanationExpanded() ? 'Show less' : 'Show full analysis' }}
+            </button>
+          }
+          <div class="reviewer-action">
+            <span class="label">Reviewer action</span>
+            {{ assessment.result.reviewerAction }}
+          </div>
+        </div>
+        <div class="evidence-panel">
+          <ng-container
+            *ngTemplateOutlet="evidence; context: { matches: pair().technicalTermMatches, label: 'Deterministic evidence' }"
+          />
+        </div>
+      </article>
+    }
+  }
+  @case ('pending') {
+    @if (assessment.state === 'NOT_RUN') {
+      <article class="pair pair-pending">
+        <div class="inference">
+          <div class="pair-header">
+            <h3>
+              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
+              <span class="pair-connector">paired with</span>
+              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
+            </h3>
+            <span class="status-pill pending">Assessment not run</span>
+          </div>
+          <span class="problem-label">{{ notRunHeading(assessment.reason) }}</span>
+          <p class="copy">{{ assessment.message }}</p>
+        </div>
+        <div class="evidence-panel">
+          <ng-container
+            *ngTemplateOutlet="
+              evidence;
+              context: { matches: pair().technicalTermMatches, label: 'Deterministic evidence remains visible' }
+            "
+          />
+        </div>
+      </article>
+    }
+  }
+  @case ('safe') {
+    @if (assessment.state === 'COMPLETED' && assessment.result.status === 'NO_RISK_IDENTIFIED') {
+      <article class="safe-summary">
+        <div class="safe-row">
+          <div class="safe-heading">
+            <h3>
+              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
+              <span class="pair-connector">paired with</span>
+              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
+            </h3>
+            <span class="safe-subline"
+              >Confidence:
+              <span [class]="confidenceClass(assessment.result.confidence)">{{
+                titleCase(assessment.result.confidence)
+              }}</span></span
+            >
+          </div>
+          <div class="safe-controls">
+            <span class="status-pill safe">No risk identified</span>
+            <button
+              type="button"
+              class="safe-toggle"
+              [attr.aria-expanded]="safeDetailsExpanded()"
+              [attr.aria-controls]="safeDetailsId"
+              (click)="toggleSafeDetails()"
+            >
+              {{ safeDetailsExpanded() ? 'Hide details' : 'View details' }}
+            </button>
+          </div>
+        </div>
+        <div class="safe-details" [id]="safeDetailsId" [hidden]="!safeDetailsExpanded()">
+          <div>
+            <span class="label">Why no risk was identified</span>
+            <p class="copy">{{ assessment.result.noRiskExplanation }}</p>
+          </div>
+          <div>
+            <ng-container
+              *ngTemplateOutlet="evidence; context: { matches: pair().technicalTermMatches, label: 'Deterministic evidence' }"
+            />
+          </div>
+        </div>
+      </article>
+    }
+  }
+}

@@ -1,1 +1,39 @@
-/* You can add global styles to this file, and also import other style files */
+/* Approved V1 visual tokens (docs: Learning Notes/ui-design-v1/cross-pr-ui-handoff-v1.md). */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap');
+
+:root {
+  --background: #edf1f2;
+  --paper: #ffffff;
+  --ink: #202629;
+  --muted: #687277;
+  --line: #c4cccf;
+  --line-strong: #7e898e;
+  --accent: #334e5a;
+  --risk: #d24762;
+  --risk-ink: #9d2540;
+  --risk-soft: #fbe8ed;
+  --safe: #28a077;
+  --safe-ink: #176e53;
+  --safe-soft: #e1f4ed;
+  --warning: #d39b12;
+  --warning-ink: #674900;
+  --warning-soft: #fbefc7;
+  --confidence-high: #2f63c7;
+  --confidence-medium: #3b8f69;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--ink);
+  font-family: 'Manrope', sans-serif;
+}

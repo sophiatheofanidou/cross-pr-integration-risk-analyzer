@@ -1,0 +1,77 @@
+<section class="runline">
+  <strong>Analysis results</strong>
+  <span class="complete">{{ statusText() }}</span>
+</section>
+
+<div class="summary" aria-label="Analysis summary">
+  <div class="metric">
+    <span class="number">{{ report().summary.eligiblePullRequestCount }}</span>
+    <span class="metric-label">Eligible PRs</span>
+  </div>
+  <div class="metric">
+    <span class="number">{{ report().summary.possiblePairCount }}</span>
+    <span class="metric-label">Possible pairs</span>
+    <span class="note">All unique combinations</span>
+  </div>
+  <div class="metric">
+    <span class="number">{{ report().summary.candidatePairCount }}</span>
+    <span class="metric-label">Candidate Pairs</span>
+    <span class="note">{{ report().summary.assessedPairCount }} assessed</span>
+  </div>
+  <div class="metric metric-risk">
+    <span class="number">{{ report().summary.riskIdentifiedCount }}</span>
+    <span class="metric-label">Risks identified</span>
+  </div>
+  <div class="metric metric-pending">
+    <span class="number">{{ report().summary.notAssessedCount }}</span>
+    <span class="metric-label">Not assessed</span>
+  </div>
+  <div class="metric metric-safe">
+    <span class="number">{{ report().summary.noRiskIdentifiedCount }}</span>
+    <span class="metric-label">No risk identified</span>
+  </div>
+</div>
+
+@if (report().warnings.length > 0) {
+  <div class="warning" aria-label="Coverage warnings">
+    <div class="warning-heading">
+      <span class="status-pill">{{ report().warnings.length }} coverage {{ report().warnings.length === 1 ? 'warning' : 'warnings' }}</span>
+    </div>
+    <ul class="warning-list">
+      @for (warning of report().warnings; track $index) {
+        <li>
+          <span class="warning-scope"
+            >PR #{{ warning.pullRequestId }}
+            @if (warning.relatedPullRequestId) {
+              <span> · related PR #{{ warning.relatedPullRequestId }}</span>
+            }
+            @if (warning.filePath) {
+              <span> · <code>{{ warning.filePath }}</code></span>
+            }
+          </span>
+          <span>{{ warning.message }}</span>
+        </li>
+      }
+    </ul>
+  </div>
+}
+
+@if (report().candidatePairs.length > 0) {
+  <div class="section-heading"><h2>Results</h2></div>
+  @for (pair of orderedCandidatePairs(); track pairTrackBy($index, pair)) {
+    <app-candidate-pair-result [pair]="pair" />
+  }
+} @else {
+  <div class="empty-results">
+    <span class="status-pill safe">Analysis completed</span>
+    <h2>No Candidate Pairs found</h2>
+    <p>{{ emptyResultsExplanation() }}</p>
+  </div>
+}
+
+<div class="section-heading"><h2>Analysis inventory</h2></div>
+<app-analysis-inventory
+  [candidatePairs]="report().candidatePairs"
+  [eligiblePullRequests]="report().eligiblePullRequests"
+  [warnings]="report().warnings"
+/>

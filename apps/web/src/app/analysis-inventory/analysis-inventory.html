@@ -1,0 +1,133 @@
+<div class="tabs" role="tablist" aria-label="Analysis inventory">
+  <button
+    #pairsTabButton
+    type="button"
+    class="tab"
+    role="tab"
+    [id]="pairsTabId"
+    [attr.aria-selected]="activeTab() === 'pairs'"
+    [attr.aria-controls]="pairsPanelId"
+    [attr.tabindex]="activeTab() === 'pairs' ? 0 : -1"
+    (click)="selectTab('pairs')"
+    (keydown)="onTabKeydown($event, 'pairs')"
+  >
+    Candidate Pairs ({{ candidatePairs().length }})
+  </button>
+  <button
+    #pullRequestsTabButton
+    type="button"
+    class="tab"
+    role="tab"
+    [id]="pullRequestsTabId"
+    [attr.aria-selected]="activeTab() === 'pull-requests'"
+    [attr.aria-controls]="pullRequestsPanelId"
+    [attr.tabindex]="activeTab() === 'pull-requests' ? 0 : -1"
+    (click)="selectTab('pull-requests')"
+    (keydown)="onTabKeydown($event, 'pull-requests')"
+  >
+    Eligible Pull Requests ({{ eligiblePullRequests().length }})
+  </button>
+</div>
+
+<div
+  [id]="pairsPanelId"
+  role="tabpanel"
+  [attr.aria-labelledby]="pairsTabId"
+  [hidden]="activeTab() !== 'pairs'"
+>
+  <div class="table-responsive">
+    <table class="overview">
+      <thead>
+        <tr>
+          <th>Candidate Pair</th>
+          <th>Evidence</th>
+          <th>Assessment</th>
+          <th>Result</th>
+          <th>Coverage</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of assessedPairs(); track entry.pair.pullRequestA.id + '-' + entry.pair.pullRequestB.id) {
+          <tr [class]="rowStateClass(entry.pair)">
+            <td class="overview-pair">
+              <a class="overview-pr" [href]="entry.pair.pullRequestA.webUrl" target="_blank" rel="noopener noreferrer"
+                ><span class="pr-number">#{{ entry.pair.pullRequestA.id }}</span> {{ entry.pair.pullRequestA.title }}</a
+              >
+              <span class="overview-connector">paired with</span>
+              <a class="overview-pr" [href]="entry.pair.pullRequestB.webUrl" target="_blank" rel="noopener noreferrer"
+                ><span class="pr-number">#{{ entry.pair.pullRequestB.id }}</span> {{ entry.pair.pullRequestB.title }}</a
+              >
+            </td>
+            <td>
+              <span class="evidence-terms">
+                @for (term of distinctTerms(entry.pair); track term) {
+                  <code>{{ term }}</code>
+                }
+              </span>
+              <span class="overview-secondary"
+                >{{ entry.pair.technicalTermMatches.length }} Technical Term
+                {{ entry.pair.technicalTermMatches.length === 1 ? 'Match' : 'Matches' }}</span
+              >
+            </td>
+            <td>
+              <span [class]="entry.pair.assessment.state === 'COMPLETED' ? 'assessment-complete' : 'limited'">{{
+                assessmentLabel(entry.pair)
+              }}</span>
+            </td>
+            <td>
+              @let result = resultSummary(entry.pair);
+              @if (result) {
+                <span class="status-pill" [class.risk]="result.status === 'Risk identified'" [class.safe]="result.status === 'No risk identified'">{{
+                  result.status
+                }}</span>
+                @if (result.detail) {
+                  <span class="overview-secondary">{{ result.detail }}</span>
+                }
+              } @else {
+                <span>—</span>
+              }
+            </td>
+            <td>
+              <span [class]="entry.coverage.label === 'Complete' ? 'assessment-complete' : 'limited'">{{ entry.coverage.label }}</span>
+              @if (entry.coverage.detail) {
+                <span class="overview-secondary">{{ entry.coverage.detail }}</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div
+  [id]="pullRequestsPanelId"
+  role="tabpanel"
+  [attr.aria-labelledby]="pullRequestsTabId"
+  [hidden]="activeTab() !== 'pull-requests'"
+>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>PR</th>
+          <th>Title</th>
+          <th>Source branch</th>
+          <th>Files</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (pullRequest of eligiblePullRequests(); track pullRequest.id) {
+          <tr>
+            <td>
+              <a [href]="pullRequest.webUrl" target="_blank" rel="noopener noreferrer">#{{ pullRequest.id }}</a>
+            </td>
+            <td>{{ pullRequest.title }}</td>
+            <td><code>{{ pullRequest.sourceBranch }}</code></td>
+            <td>{{ pullRequest.changedFileCount }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,37 @@
+<form class="toolbar" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <label class="field">
+    <span class="field-label">GitHub repository URL</span>
+    <input
+      type="text"
+      formControlName="repositoryUrl"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="https://github.com/acme/payments-platform"
+      [attr.aria-invalid]="showError('repositoryUrl') ? true : null"
+      [attr.aria-describedby]="showError('repositoryUrl') ? 'repository-url-error' : null"
+    />
+    @if (showError('repositoryUrl')) {
+      <span class="field-error" id="repository-url-error">
+        Enter one complete HTTPS GitHub repository URL, such as https://github.com/acme/payments-platform.
+      </span>
+    }
+  </label>
+  <label class="field">
+    <span class="field-label">Target branch</span>
+    <input
+      type="text"
+      formControlName="targetBranch"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="development"
+      [attr.aria-invalid]="showError('targetBranch') ? true : null"
+      [attr.aria-describedby]="showError('targetBranch') ? 'target-branch-error' : null"
+    />
+    @if (showError('targetBranch')) {
+      <span class="field-error" id="target-branch-error">Enter a target branch.</span>
+    }
+  </label>
+  <button type="submit" class="run-button" [disabled]="disabled()">
+    {{ disabled() ? 'Running analysis…' : 'Run analysis' }}
+  </button>
+</form>
