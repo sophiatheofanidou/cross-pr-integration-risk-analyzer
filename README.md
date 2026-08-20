@@ -32,6 +32,24 @@ Each root verification command runs the corresponding command in both workspaces
 
 On Windows PowerShell, if the local execution policy blocks `npm.ps1`, use `npm.cmd` in place of `npm`. No execution-policy change is required.
 
+## Key-Free Visual Demo
+
+Run the Angular reviewer UI with the development-only fixture API:
+
+```text
+npm run demo
+```
+
+Then open `http://127.0.0.1:4200/` and use:
+
+- repository: `https://github.com/acme/payments-platform`,
+- branch `development` for a complete report with warnings,
+- branch `empty` for the zero-Candidate-Pairs state,
+- branch `failure` for an operation error,
+- branch `retry` for a first-attempt failure followed by a successful retry.
+
+The fixture is only for repeatable UI review. It does not call GitHub or Claude and is not used by the production backend.
+
 ## Design Sources
 
 The approved architecture and MVP boundaries are documented in `docs/design/`. The implementation sequence and decision gates are maintained in `planning/implementation-plan.md`.
