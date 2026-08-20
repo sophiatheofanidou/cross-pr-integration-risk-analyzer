@@ -40,9 +40,9 @@ Current checkpoint:
 - `M3` is committed as `be419c6 feat: add TypeScript structural candidate discovery`, followed by the bounded AI code-search documentation commit `586c280`,
 - `M4` is committed as `caae004 feat: add Claude cross-PR risk assessment`,
 - the `M5A` backend operation is committed as `f6bcf4f feat: expose synchronous analysis API`,
-- the `M5B` Angular reviewer UI is complete, independently reviewed, visually refined and fully verified,
-- a development-only, key-free visual fixture is complete and covers the required UI states repeatably,
-- `M5C` still requires a controlled live Angular-to-production-backend walkthrough with real GitHub and Claude configuration before M5 can be declared complete.
+- the `M5B` Angular reviewer UI is committed as `0afd651 feat: add reviewer analysis dashboard`, followed by the key-free visual fixture commit `74b2337`,
+- `M5C` is complete: the production Angular/backend/GitHub path returned a valid live empty-scope report, and the real Claude provider returned a schema-validated structured result,
+- `M5` is complete; the next milestone is `M6 — Reproducible Demo and MVP Hardening`.
 
 M3 replaced the obsolete M1 evidence and context contracts with the current `TechnicalTermMatch`, `CandidatePair`, source-location and `AnalysisWarning` model.
 
@@ -255,7 +255,7 @@ feat: add Claude cross-PR risk assessment
 
 ## M5 — Minimal End-to-End Application
 
-**Status:** In progress — M5A and M5B complete; live M5C integration pending
+**Status:** Complete — M5A, M5B and M5C verified
 
 ### Goal
 
@@ -294,7 +294,9 @@ Expose the working pipeline through one backend operation and one useful Angular
 
 - API integration tests use fake external providers,
 - Angular tests cover the primary states,
-- a manual browser walkthrough completes the flow,
+- a key-free manual browser walkthrough covers the complete UI state set at desktop and narrow widths,
+- a live browser walkthrough through Angular, the production backend and GitHub returns the expected successful empty-scope report for a real repository with no open pull requests,
+- the opt-in real Claude provider smoke test returns one schema-validated structured Risk Result,
 - the complete repository is never sent to Claude,
 - no persistent cache or tiered AI orchestration appears implicitly.
 
@@ -303,6 +305,7 @@ Expose the working pipeline through one backend operation and one useful Angular
 ```text
 feat: expose synchronous analysis API
 feat: add reviewer analysis dashboard
+fix: complete live provider integration
 ```
 
 ---
@@ -403,4 +406,4 @@ These exclusions control the first implementation only. The post-MVP roadmap pre
 
 # Immediate Next Step
 
-Complete M5C with a controlled live Angular-to-production-backend walkthrough using real GitHub and Claude configuration before declaring M5 complete or beginning M6.
+Begin M6 by designing and configuring a separate controlled GitHub demo repository with known approved TypeScript pull-request scenarios. Keep the scenario reproducible, bound the expected Claude calls and document the walkthrough without adding post-MVP product scope.

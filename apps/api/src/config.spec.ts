@@ -4,7 +4,7 @@ import { loadConfig } from './config.js';
 const validEnv = {
   GITHUB_TOKEN: 'gh-token',
   ANTHROPIC_API_KEY: 'anthropic-key',
-  CLAUDE_MODEL: 'claude-test-model',
+  ANTHROPIC_MODEL: 'claude-test-model',
 };
 
 describe('loadConfig', () => {
@@ -27,17 +27,23 @@ describe('loadConfig', () => {
 
   it('throws a descriptive error, naming only the missing variable, when GITHUB_TOKEN is missing', () => {
     expect(() =>
-      loadConfig({ ANTHROPIC_API_KEY: validEnv.ANTHROPIC_API_KEY, CLAUDE_MODEL: validEnv.CLAUDE_MODEL }),
+      loadConfig({
+        ANTHROPIC_API_KEY: validEnv.ANTHROPIC_API_KEY,
+        ANTHROPIC_MODEL: validEnv.ANTHROPIC_MODEL,
+      }),
     ).toThrow(/githubToken/);
   });
 
   it('throws when ANTHROPIC_API_KEY is missing', () => {
     expect(() =>
-      loadConfig({ GITHUB_TOKEN: validEnv.GITHUB_TOKEN, CLAUDE_MODEL: validEnv.CLAUDE_MODEL }),
+      loadConfig({
+        GITHUB_TOKEN: validEnv.GITHUB_TOKEN,
+        ANTHROPIC_MODEL: validEnv.ANTHROPIC_MODEL,
+      }),
     ).toThrow(/anthropicApiKey/);
   });
 
-  it('throws when CLAUDE_MODEL is missing', () => {
+  it('throws when ANTHROPIC_MODEL is missing', () => {
     expect(() =>
       loadConfig({ GITHUB_TOKEN: validEnv.GITHUB_TOKEN, ANTHROPIC_API_KEY: validEnv.ANTHROPIC_API_KEY }),
     ).toThrow(/claudeModel/);
@@ -50,7 +56,7 @@ describe('loadConfig', () => {
   it('never includes the secret values themselves in the thrown error message', () => {
     expect.assertions(1);
     try {
-      loadConfig({ ANTHROPIC_API_KEY: 'super-secret-value', CLAUDE_MODEL: 'model' });
+      loadConfig({ ANTHROPIC_API_KEY: 'super-secret-value', ANTHROPIC_MODEL: 'model' });
     } catch (error) {
       expect((error as Error).message).not.toContain('super-secret-value');
     }

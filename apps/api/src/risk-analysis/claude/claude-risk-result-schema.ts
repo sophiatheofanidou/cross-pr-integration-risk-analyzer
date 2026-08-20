@@ -15,9 +15,13 @@ export {
 } from '../../domain/risk-result.js';
 
 const requiredText = (maxLength: number) => z.string().trim().min(1).max(maxLength);
-const confidenceSchema = z
-  .enum(['LOW', 'MEDIUM', 'HIGH'])
-  .describe('Evidential support for the assessment, not potential impact');
+// Return a fresh Zod node for each union branch. Reusing one node makes the
+// SDK emit a root-level `$defs`/`$ref` pair alongside `anyOf`, which the
+// Anthropic structured-output endpoint rejects.
+const createConfidenceSchema = () =>
+  z
+    .enum(['LOW', 'MEDIUM', 'HIGH'])
+    .describe('Evidential support for the assessment, not potential impact');
 const severitySchema = z
   .enum(['LOW', 'MEDIUM', 'HIGH'])
   .describe('Potential impact if the identified risk is real');
@@ -32,7 +36,7 @@ export const claudeRiskResultSchema = z.discriminatedUnion('status', [
       reviewerAction: requiredText(REVIEWER_ACTION_MAX_LENGTH).describe(
         'One concrete imperative review step, naming the relevant supplied file, symbol or data flow when the evidence supports it',
       ),
-      confidence: confidenceSchema,
+      confidence: createConfidenceSchema(),
       severity: severitySchema,
     })
     .strict(),
@@ -42,7 +46,7 @@ export const claudeRiskResultSchema = z.discriminatedUnion('status', [
       noRiskExplanation: requiredText(NO_RISK_EXPLANATION_MAX_LENGTH).describe(
         'Why the supplied deterministic relationship appears compatible or coincidental',
       ),
-      confidence: confidenceSchema,
+      confidence: createConfidenceSchema(),
     })
     .strict(),
 ]);

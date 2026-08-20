@@ -1,3 +1,4 @@
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { describe, expect, it } from 'vitest';
 import {
   claudeRiskResultSchema,
@@ -8,6 +9,15 @@ import {
 } from './claude-risk-result-schema.js';
 
 describe('claudeRiskResultSchema', () => {
+  it('generates an Anthropic-compatible union schema without reusable definitions', () => {
+    const generatedSchema = zodOutputFormat(claudeRiskResultSchema).schema;
+    const serializedSchema = JSON.stringify(generatedSchema);
+
+    expect(generatedSchema).toHaveProperty('anyOf');
+    expect(serializedSchema).not.toContain('"$defs"');
+    expect(serializedSchema).not.toContain('"$ref"');
+  });
+
   it('validates and trims a complete identified-risk result', () => {
     const parsed = claudeRiskResultSchema.parse({
       status: 'RISK_IDENTIFIED',

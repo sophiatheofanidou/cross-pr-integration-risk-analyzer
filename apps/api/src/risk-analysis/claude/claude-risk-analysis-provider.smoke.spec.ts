@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { ClaudeRiskAnalysisProvider } from './claude-risk-analysis-provider.js';
 
 const smokeEnabled = process.env['RUN_CLAUDE_SMOKE_TEST'] === '1';
+const SMOKE_TEST_TIMEOUT_MS = 60_000;
 
 describe.runIf(smokeEnabled)('ClaudeRiskAnalysisProvider real-provider smoke test', () => {
   it('returns one schema-validated synthetic Risk Result', async () => {
@@ -34,5 +35,5 @@ describe.runIf(smokeEnabled)('ClaudeRiskAnalysisProvider real-provider smoke tes
         ? result.potentialIntegrationProblem.length
         : result.noRiskExplanation.length;
     expect(explanationLength).toBeGreaterThan(0);
-  });
+  }, SMOKE_TEST_TIMEOUT_MS);
 });
