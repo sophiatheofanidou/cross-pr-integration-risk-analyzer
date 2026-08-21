@@ -312,18 +312,59 @@ fix: complete live provider integration
 
 ## M6 — Reproducible Demo and MVP Hardening
 
+**Status:** Planned — working model approved; implementation not started
+
 ### Goal
 
 Demonstrate the product reliably with known cross-PR scenarios and clear setup documentation.
 
+The demonstration must optimize for immediate reviewer comprehension as well as technical validity. A reader with no prior knowledge of the demo repository should be able to understand the designed integration risk from the PR titles, small diffs and displayed result without first studying the complete codebase.
+
+### Scenario-Design Gate
+
+Before creating the external demo repository or changing production code, the next M6 session must inspect the existing visual fixture and controlled regression scenarios, then present the project owner with a complete proposed demonstration design covering:
+
+- one coherent, small and runnable TypeScript application domain rather than disconnected fixture files,
+- the proposed base repository structure and the purpose of its principal files,
+- the exact PR set, titles, changed files and intended pair relationships,
+- the expected possible-pair, Candidate-Pair, filtered-pair, warning and Claude-call counts,
+- the expected risk, no-risk and warning outcomes and why each should be immediately understandable,
+- which UI states remain covered by the key-free visual fixture instead of being forced artificially into the live repository,
+- the account, review and approval sequence,
+- the bounded evaluation and provider-cost plan.
+
+The project owner approves, rejects or revises that complete design before repository creation, pull-request creation, live provider calls or implementation edits begin.
+
 ### Scope
 
-- create or configure a controlled GitHub demo repository,
-- connect the M3 scenarios to the end-to-end demonstration,
-- document token and provider configuration,
-- complete error messages and visible limitations,
-- record the expected walkthrough and outputs,
-- verify fresh-clone setup.
+- create a separate public controlled GitHub demo repository with small TypeScript changes,
+- make the repository resemble a plausible application: internally coherent naming and workflows, compilable base and individual PR states, and only enough code to support credible scenarios,
+- make the central risk deliberately clear and consequential without relying on hidden domain knowledge, lengthy code reading or ambiguous model interpretation,
+- use a clearly disclosed secondary demo account to author the scenario pull requests and the project owner's primary account to review and approve them,
+- keep pull-request creation manual; do not add Claude Code or GitHub Actions automation merely to manufacture PR authorship,
+- cover at least four controlled behaviour categories in the end-to-end demonstration:
+  - a designed non-textual integration risk,
+  - a coincidental structural match,
+  - an unrelated pair filtered before Claude,
+  - unsupported or incomplete input that produces a visible warning,
+- determine the final number of PRs, Candidate Pairs and live runs from the approved scenario design; the four categories do not require exactly four PRs or four separate reports,
+- run the live demonstration locally with project-owner credentials that are never stored in either repository,
+- keep the public application repository self-hosted and bring-your-own-key, with required server-side environment variables and secret-handling guidance documented,
+- record a compact expected-versus-actual evaluation including Candidate-Pair outcome, assessment status, Claude-call count, model, token usage, latency and approximate cost,
+- summarize the evaluation in the portfolio README and keep detailed evidence in a focused demo document,
+- add a simple GitHub Actions CI workflow for install, build, type-check, normal tests and lint; never run the paid Claude smoke test automatically,
+- complete portfolio-oriented README presentation, screenshots and a short reproducible walkthrough,
+- verify fresh-clone setup and document visible limitations.
+
+Production changes are allowed only when the controlled walkthrough exposes a real defect or when a small change is required for reproducible setup. RAG, vector databases, agentic orchestration and unrelated post-MVP capabilities are not added to this project for portfolio keyword coverage.
+
+### Explicitly Deferred
+
+- public cloud deployment, Docker packaging and Azure infrastructure remain a separate post-M6 decision,
+- a public hosted service that accepts arbitrary repositories is out of scope,
+- Claude-authored or GitHub-Actions-authored scenario PRs are unnecessary under the approved two-account workflow,
+- automated LLM evaluation infrastructure, statistical dashboards and persistent evaluation storage are unnecessary for the first controlled demonstration,
+- the live repository does not need to reproduce every visual-fixture-only interaction or operational state, such as simulated failure/retry or artificially long text, unless the approved realistic scenarios produce it naturally.
 
 ### Verification
 
@@ -331,11 +372,16 @@ Demonstrate the product reliably with known cross-PR scenarios and clear setup d
 - a coincidental structural match is dismissed,
 - an unrelated pair is filtered before AI,
 - unsupported input produces a visible warning,
+- the live evaluation records expected versus actual behaviour and bounded provider usage without exposing credentials,
+- CI verifies the repository on GitHub-hosted infrastructure without invoking paid external-provider tests,
+- the primary README communicates the value, architecture, AI-safety choices and demonstrated outcomes without requiring readers to traverse the full design set,
 - the complete UI workflow is reproducible.
 
-### Commit Point
+### Planned Commit Points
 
 ```text
+docs: define M6 demonstration plan
+ci: add automated project verification
 docs: complete reproducible MVP demonstration
 ```
 
@@ -406,4 +452,4 @@ These exclusions control the first implementation only. The post-MVP roadmap pre
 
 # Immediate Next Step
 
-Begin M6 by designing and configuring a separate controlled GitHub demo repository with known approved TypeScript pull-request scenarios. Keep the scenario reproducible, bound the expected Claude calls and document the walkthrough without adding post-MVP product scope.
+Begin M6 in a fresh session with the scenario-design gate: compare the existing mock/controlled coverage, propose the coherent demo application and complete PR/pair matrix, explain the expected immediately understandable outcomes and bounded call budget, and wait for project-owner approval before creating the external repository or changing code.
