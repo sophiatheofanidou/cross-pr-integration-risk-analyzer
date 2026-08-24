@@ -198,7 +198,14 @@ describe('App', () => {
               state: 'COMPLETED',
               result: {
                 status: 'RISK_IDENTIFIED',
-                potentialIntegrationProblem: 'PR #184 changes processPayment so that currency is required.',
+                likelyOutcome: 'Payment processing may fail.',
+                pullRequestAContribution: 'PR #184 changes processPayment.',
+                pullRequestBContribution: 'PR #191 uses the previous contract.',
+                combinedEffect: 'The combined call may be incompatible.',
+                relevantCode: {
+                  pullRequestA: [{ pullRequestId: '184', technicalTerm: 'processPayment', filePath: 'src/payment.service.ts', startLine: 18 }],
+                  pullRequestB: [{ pullRequestId: '191', technicalTerm: 'processPayment', filePath: 'src/settlement.ts', startLine: 42 }],
+                },
                 reviewerAction: 'Check src/settlement.ts.',
                 confidence: 'HIGH',
                 severity: 'HIGH',

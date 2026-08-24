@@ -62,7 +62,14 @@ function fullReport(targetBranch) {
           state: 'COMPLETED',
           result: {
             status: 'RISK_IDENTIFIED',
-            potentialIntegrationProblem: 'PR #184 changes processPayment so that every payment requires an explicit currency, while PR #191 introduces an invoice settlement path that continues to call the function with only an amount. If both pull requests are merged, settlement processing may reach processPayment without the newly required currency and fail or use an unintended default. The risk affects invoice settlement behavior across the payment service and settlement handler. The supplied evidence also shows that the call occurs in a changed TypeScript file, so the reviewer should confirm the combined contract before either pull request is merged.',
+            likelyOutcome: 'Invoice settlement may fail when processing a payment.',
+            pullRequestAContribution: 'Changes processPayment so every payment requires an explicit currency.',
+            pullRequestBContribution: 'Adds invoice settlement using an amount without supplying the newly required currency.',
+            combinedEffect: 'The settlement path may call the updated payment contract without required data, preventing the payment from completing successfully.',
+            relevantCode: {
+              pullRequestA: [{ pullRequestId: '184', technicalTerm: 'processPayment', filePath: 'src/payment.service.ts', startLine: 18 }],
+              pullRequestB: [{ pullRequestId: '191', technicalTerm: 'processPayment', filePath: 'src/settlement.ts', startLine: 42 }],
+            },
             reviewerAction: 'Check src/settlement.ts and ensure invoice.currency is passed through PaymentRequest to processPayment.',
             confidence: 'HIGH',
             severity: 'HIGH',
@@ -77,7 +84,14 @@ function fullReport(targetBranch) {
           state: 'COMPLETED',
           result: {
             status: 'RISK_IDENTIFIED',
-            potentialIntegrationProblem: 'PR #184 requires currency in processPayment, while PR #203 passes only event.amount. Together, webhook payments may invoke the function without currency.',
+            likelyOutcome: 'Webhook payment processing may fail.',
+            pullRequestAContribution: 'Requires processPayment callers to supply a currency.',
+            pullRequestBContribution: 'Adds a webhook path that passes only the event amount.',
+            combinedEffect: 'The new webhook caller may not satisfy the updated payment contract.',
+            relevantCode: {
+              pullRequestA: [{ pullRequestId: '184', technicalTerm: 'processPayment', filePath: 'src/payment.service.ts', startLine: 18 }],
+              pullRequestB: [{ pullRequestId: '203', technicalTerm: 'processPayment', filePath: 'src/webhook.ts', startLine: 36 }],
+            },
             reviewerAction: 'Check src/webhook.ts and map the webhook currency into the processPayment call.',
             confidence: 'MEDIUM',
             severity: 'MEDIUM',
@@ -102,7 +116,9 @@ function fullReport(targetBranch) {
           state: 'COMPLETED',
           result: {
             status: 'NO_RISK_IDENTIFIED',
-            noRiskExplanation: 'The shared term handler refers to separate local functions with unrelated inputs and responsibilities.',
+            relationshipSummary: 'Both pull requests contain the shared technical term handler.',
+            independenceReason: 'The supplied handlers are local functions with unrelated inputs and responsibilities.',
+            coverageLimitation: 'One unsupported file was outside the bounded TypeScript analysis.',
             confidence: 'MEDIUM',
           },
         },

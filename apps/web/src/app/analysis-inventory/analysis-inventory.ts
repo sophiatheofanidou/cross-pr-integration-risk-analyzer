@@ -35,7 +35,17 @@ export class AnalysisInventory {
   protected readonly pullRequestsPanelId = 'analysis-inventory-pull-requests-panel';
 
   protected readonly assessedPairs = computed(() =>
-    this.candidatePairs().map((pair) => ({ pair, coverage: this.coverageFor(pair) })),
+    this.candidatePairs()
+      .map((pair, originalIndex) => ({
+        pair,
+        coverage: this.coverageFor(pair),
+        originalIndex,
+      }))
+      .sort(
+        (a, b) =>
+          this.presentationPriority(a.pair) - this.presentationPriority(b.pair) ||
+          a.originalIndex - b.originalIndex,
+      ),
   );
 
   protected selectTab(tab: InventoryTab): void {
@@ -94,6 +104,13 @@ export class AnalysisInventory {
       return 'row-pending';
     }
     return pair.assessment.result.status === 'RISK_IDENTIFIED' ? 'row-risk' : 'row-safe';
+  }
+
+  private presentationPriority(pair: CandidatePairReport): number {
+    if (pair.assessment.state === 'NOT_RUN') {
+      return 1;
+    }
+    return pair.assessment.result.status === 'RISK_IDENTIFIED' ? 0 : 2;
   }
 
   protected resultSummary(pair: CandidatePairReport): { status: string; detail?: string } | undefined {

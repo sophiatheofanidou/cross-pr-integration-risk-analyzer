@@ -37,7 +37,14 @@ const candidatePairs: readonly CandidatePairReport[] = [
       state: 'COMPLETED',
       result: {
         status: 'RISK_IDENTIFIED',
-        potentialIntegrationProblem: 'problem',
+        likelyOutcome: 'Payment processing may fail.',
+        pullRequestAContribution: 'PR #184 changes the contract.',
+        pullRequestBContribution: 'PR #191 uses the previous contract.',
+        combinedEffect: 'The combined call may be incompatible.',
+        relevantCode: {
+          pullRequestA: [{ pullRequestId: '184', technicalTerm: 'processPayment', filePath: 'src/payment.service.ts', startLine: 18 }],
+          pullRequestB: [{ pullRequestId: '191', technicalTerm: 'processPayment', filePath: 'src/settlement.ts', startLine: 42 }],
+        },
         reviewerAction: 'action',
         confidence: 'HIGH',
         severity: 'HIGH',
@@ -87,7 +94,7 @@ describe('AnalysisInventory', () => {
     expect(fixture.nativeElement.textContent).toContain('Require currency in processPayment');
   });
 
-  it('shows every distinct technical term without duplicates, while the match count stays the total', () => {
+  it('shows every distinct shared technical term without exposing the raw relationship count as the term count', () => {
     const pairWithMultipleMatches: CandidatePairReport = {
       pullRequestA: { id: '197', title: 'Add upload handler', webUrl: 'https://github.com/acme/payments-platform/pull/197' },
       pullRequestB: { id: '203', title: 'Add webhook handler', webUrl: 'https://github.com/acme/payments-platform/pull/203' },
@@ -134,7 +141,12 @@ describe('AnalysisInventory', () => {
       ],
       assessment: {
         state: 'COMPLETED',
-        result: { status: 'NO_RISK_IDENTIFIED', noRiskExplanation: 'unrelated', confidence: 'MEDIUM' },
+        result: {
+          status: 'NO_RISK_IDENTIFIED',
+          relationshipSummary: 'The same name appears in both pull requests.',
+          independenceReason: 'The supplied functions are independent.',
+          confidence: 'MEDIUM',
+        },
       },
     };
 
@@ -146,10 +158,11 @@ describe('AnalysisInventory', () => {
 
     const terms = fixture.debugElement.queryAll(By.css('.evidence-terms code')).map((el) => el.nativeElement.textContent.trim());
     expect(terms).toEqual(['handler', 'PaymentEvent']);
-    expect(fixture.nativeElement.textContent).toContain('3 Technical Term Matches');
+    expect(fixture.nativeElement.textContent).toContain('2 shared technical terms');
+    expect(fixture.nativeElement.textContent).not.toContain('3 Technical Term Matches');
   });
 
-  it('applies a row-state class matching risk, not-run and no-risk assessments', () => {
+  it('orders risk first, not-run second and no-risk last while applying matching row classes', () => {
     const riskPair: CandidatePairReport = {
       ...candidatePairs[0],
     };
@@ -165,12 +178,17 @@ describe('AnalysisInventory', () => {
       technicalTermMatches: [],
       assessment: {
         state: 'COMPLETED',
-        result: { status: 'NO_RISK_IDENTIFIED', noRiskExplanation: 'unrelated', confidence: 'MEDIUM' },
+        result: {
+          status: 'NO_RISK_IDENTIFIED',
+          relationshipSummary: 'The same name appears in both pull requests.',
+          independenceReason: 'The supplied functions are independent.',
+          confidence: 'MEDIUM',
+        },
       },
     };
 
     const fixture = TestBed.createComponent(AnalysisInventory);
-    fixture.componentRef.setInput('candidatePairs', [riskPair, notRunPair, safePair]);
+    fixture.componentRef.setInput('candidatePairs', [safePair, riskPair, notRunPair]);
     fixture.componentRef.setInput('eligiblePullRequests', []);
     fixture.componentRef.setInput('warnings', []);
     fixture.detectChanges();

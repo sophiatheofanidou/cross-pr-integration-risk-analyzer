@@ -4,19 +4,90 @@
   </a>
 </ng-template>
 
-<ng-template #evidence let-matches="matches" let-label="label">
+<ng-template
+  #evidence
+  let-groups="groups"
+  let-label="label"
+  let-relevantCode="relevantCode"
+  let-supportingTerms="supportingTerms"
+>
   <span class="evidence-label">{{ label }}</span>
-  @for (match of matches; track match.technicalTerm + match.changedRegionLocation.filePath + $index) {
-    <div class="match">
-      <strong><code>{{ match.technicalTerm }}</code></strong><br />
-      @let location = matchLocationLabel(match);
-      Changed in #{{ location.changedPullRequestId }} ·
-      <code>{{ location.changedFilePath }}:{{ location.changedStartLine }}</code
-      ><br />
-      Matched in #{{ location.matchingPullRequestId }} ·
-      <code>{{ location.matchingFilePath }}:{{ location.matchingStartLine }}</code>
+  <div class="term-list shared-term-list">
+    @for (group of groups; track group.technicalTerm) {
+      <span class="term-item">
+        <code>{{ group.technicalTerm }}</code>
+        @if (supportingTerms?.has(group.technicalTerm)) {
+          <span class="risk-term-marker-wrap">
+            <button
+              type="button"
+              class="risk-term-marker"
+              aria-label="Why this shared technical term is marked"
+              [attr.aria-describedby]="termTooltipId(group.technicalTerm)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M12 3.25c-5.11 0-9.25 3.48-9.25 7.78 0 1.84.76 3.53 2.03 4.86l-.93 4.02 4.27-1.56c1.18.31 2.49.47 3.88.47 5.11 0 9.25-3.48 9.25-7.79S17.11 3.25 12 3.25Z"
+                />
+                <circle cx="12" cy="8" r="1" class="info-dot" />
+                <path d="M12 11v4" class="info-stem" />
+              </svg>
+            </button>
+            <span class="term-tooltip" role="tooltip" [id]="termTooltipId(group.technicalTerm)">
+              Linked to the reported risk locations
+            </span>
+          </span>
+        }
+      </span>
+    }
+  </div>
+
+  @if (relevantCode) {
+    <div class="relevant-code-grid">
+      <div>
+        <strong>PR #{{ pair().pullRequestA.id }}</strong>
+        @for (location of relevantCode.pullRequestA; track location.pullRequestId + location.filePath + location.startLine) {
+          <code class="location-code">{{ location.filePath }}</code>
+          <span class="relevant-line">Line {{ location.startLine }}</span>
+        }
+      </div>
+      <div>
+        <strong>PR #{{ pair().pullRequestB.id }}</strong>
+        @for (location of relevantCode.pullRequestB; track location.pullRequestId + location.filePath + location.startLine) {
+          <code class="location-code">{{ location.filePath }}</code>
+          <span class="relevant-line">Line {{ location.startLine }}</span>
+        }
+      </div>
     </div>
   }
+
+  <details class="technical-details">
+    <summary>View all technical match occurrences</summary>
+    @for (group of groups; track group.technicalTerm) {
+      <section class="evidence-group">
+        <strong><code>{{ group.technicalTerm }}</code></strong>
+        <div class="occurrence-grid">
+          <div>
+            <span class="evidence-label">Occurrences in PR #{{ group.pullRequestA.pullRequestId }}</span>
+            @for (file of group.pullRequestA.files; track file.filePath) {
+              <div class="occurrence-file">
+                <code>{{ file.filePath }}</code>
+                <span>Lines {{ file.lines.join(', ') }}</span>
+              </div>
+            }
+          </div>
+          <div>
+            <span class="evidence-label">Occurrences in PR #{{ group.pullRequestB.pullRequestId }}</span>
+            @for (file of group.pullRequestB.files; track file.filePath) {
+              <div class="occurrence-file">
+                <code>{{ file.filePath }}</code>
+                <span>Lines {{ file.lines.join(', ') }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+    }
+  </details>
 </ng-template>
 
 @let assessment = pair().assessment;
@@ -25,48 +96,62 @@
   @case ('risk') {
     @if (assessment.state === 'COMPLETED' && assessment.result.status === 'RISK_IDENTIFIED') {
       <article class="pair pair-risk">
-        <div class="inference">
-          <div class="pair-header">
-            <h3>
-              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
-              <span class="pair-connector">paired with</span>
-              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
-            </h3>
+        <div class="pair-header">
+          <h3>
+            <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
+            <span class="pair-connector">paired with</span>
+            <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
+          </h3>
+          <div class="risk-status">
             <span class="status-pill risk">Risk identified</span>
+            <span class="priority">
+              <span class="metric-pair">
+                Severity:
+                <strong [class]="severityClass(assessment.result.severity)">{{ titleCase(assessment.result.severity) }}</strong>
+              </span>
+              <span class="metric-pair">
+                · Confidence:
+                <strong [class]="confidenceClass(assessment.result.confidence)">{{ titleCase(assessment.result.confidence) }}</strong>
+              </span>
+            </span>
           </div>
-          <p class="priority">
-            Severity:
-            <strong [class]="severityClass(assessment.result.severity)">{{ titleCase(assessment.result.severity) }}</strong>
-            · Confidence:
-            <strong [class]="confidenceClass(assessment.result.confidence)">{{ titleCase(assessment.result.confidence) }}</strong>
-          </p>
-          <span class="problem-label">Potential integration problem</span>
-          <p
-            class="copy"
-            [class.clamped]="isLongExplanation() && !explanationExpanded()"
-            [id]="problemTextId"
-          >
-            {{ assessment.result.potentialIntegrationProblem }}
-          </p>
-          @if (isLongExplanation()) {
-            <button
-              type="button"
-              class="link-button"
-              [attr.aria-expanded]="explanationExpanded()"
-              [attr.aria-controls]="problemTextId"
-              (click)="toggleExplanation()"
-            >
-              {{ explanationExpanded() ? 'Show less' : 'Show full analysis' }}
-            </button>
-          }
-          <div class="reviewer-action">
+        </div>
+        <div class="inference">
+          <section class="risk-section outcome-section">
+            <span class="problem-label">Likely outcome</span>
+            <p class="likely-outcome">{{ assessment.result.likelyOutcome }}</p>
+          </section>
+          <section class="risk-section">
+            <span class="problem-label">How the PRs interact</span>
+            <div class="contribution">
+              <strong>PR #{{ pair().pullRequestA.id }}</strong>
+              <p>{{ assessment.result.pullRequestAContribution }}</p>
+            </div>
+            <div class="contribution">
+              <strong>PR #{{ pair().pullRequestB.id }}</strong>
+              <p>{{ assessment.result.pullRequestBContribution }}</p>
+            </div>
+          </section>
+          <section class="risk-section">
+            <span class="problem-label">If both PRs are merged</span>
+            <p class="copy">{{ assessment.result.combinedEffect }}</p>
+          </section>
+          <div class="reviewer-action risk-section">
             <span class="label">Reviewer action</span>
-            {{ assessment.result.reviewerAction }}
+            <p>{{ assessment.result.reviewerAction }}</p>
           </div>
         </div>
         <div class="evidence-panel">
           <ng-container
-            *ngTemplateOutlet="evidence; context: { matches: pair().technicalTermMatches, label: 'Deterministic evidence' }"
+            *ngTemplateOutlet="
+              evidence;
+              context: {
+                groups: evidenceGroups(),
+                label: 'Shared technical terms',
+                relevantCode: assessment.result.relevantCode,
+                supportingTerms: riskSupportingTerms()
+              }
+            "
           />
         </div>
       </article>
@@ -75,15 +160,15 @@
   @case ('pending') {
     @if (assessment.state === 'NOT_RUN') {
       <article class="pair pair-pending">
+        <div class="pair-header">
+          <h3>
+            <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
+            <span class="pair-connector">paired with</span>
+            <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
+          </h3>
+          <span class="status-pill pending">Assessment not run</span>
+        </div>
         <div class="inference">
-          <div class="pair-header">
-            <h3>
-              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestA }" />
-              <span class="pair-connector">paired with</span>
-              <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
-            </h3>
-            <span class="status-pill pending">Assessment not run</span>
-          </div>
           <span class="problem-label">{{ notRunHeading(assessment.reason) }}</span>
           <p class="copy">{{ assessment.message }}</p>
         </div>
@@ -91,7 +176,7 @@
           <ng-container
             *ngTemplateOutlet="
               evidence;
-              context: { matches: pair().technicalTermMatches, label: 'Deterministic evidence remains visible' }
+              context: { groups: evidenceGroups(), label: 'Shared technical terms' }
             "
           />
         </div>
@@ -108,6 +193,20 @@
               <span class="pair-connector">paired with</span>
               <ng-container *ngTemplateOutlet="prLink; context: { pr: pair().pullRequestB }" />
             </h3>
+          </div>
+          <div class="safe-controls">
+            <div>
+              <span class="status-pill safe">No risk identified</span>
+              <button
+                type="button"
+                class="safe-toggle"
+                [attr.aria-expanded]="safeDetailsExpanded()"
+                [attr.aria-controls]="safeDetailsId"
+                (click)="toggleSafeDetails()"
+              >
+                {{ safeDetailsExpanded() ? 'Hide details' : 'View details' }}
+              </button>
+            </div>
             <span class="safe-subline"
               >Confidence:
               <span [class]="confidenceClass(assessment.result.confidence)">{{
@@ -115,27 +214,27 @@
               }}</span></span
             >
           </div>
-          <div class="safe-controls">
-            <span class="status-pill safe">No risk identified</span>
-            <button
-              type="button"
-              class="safe-toggle"
-              [attr.aria-expanded]="safeDetailsExpanded()"
-              [attr.aria-controls]="safeDetailsId"
-              (click)="toggleSafeDetails()"
-            >
-              {{ safeDetailsExpanded() ? 'Hide details' : 'View details' }}
-            </button>
-          </div>
         </div>
         <div class="safe-details" [id]="safeDetailsId" [hidden]="!safeDetailsExpanded()">
-          <div>
-            <span class="label">Why no risk was identified</span>
-            <p class="copy">{{ assessment.result.noRiskExplanation }}</p>
+          <div class="safe-explanation">
+            <section class="safe-section">
+              <span class="problem-label">Why these PRs were compared</span>
+              <p class="copy">{{ assessment.result.relationshipSummary }}</p>
+            </section>
+            <section class="safe-section">
+              <span class="problem-label">Why the changes appear independent</span>
+              <p class="copy">{{ assessment.result.independenceReason }}</p>
+            </section>
+            @if (assessment.result.coverageLimitation) {
+              <section class="safe-section">
+                <span class="problem-label">Coverage limitation</span>
+                <p class="copy">{{ assessment.result.coverageLimitation }}</p>
+              </section>
+            }
           </div>
           <div>
             <ng-container
-              *ngTemplateOutlet="evidence; context: { matches: pair().technicalTermMatches, label: 'Deterministic evidence' }"
+              *ngTemplateOutlet="evidence; context: { groups: evidenceGroups(), label: 'Shared technical terms' }"
             />
           </div>
         </div>

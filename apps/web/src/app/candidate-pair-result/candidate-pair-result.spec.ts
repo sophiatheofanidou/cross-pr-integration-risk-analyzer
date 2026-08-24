@@ -19,13 +19,11 @@ const technicalTermMatches: readonly TechnicalTermMatch[] = [
   {
     technicalTerm: 'processPayment',
     changedRegionLocation: {
-      pullRequestId: '184',
-      filePath: 'src/payment.service.ts',
+      pullRequestId: '184', filePath: 'src/payment.service.ts',
       range: { start: { line: 18, column: 1 }, end: { line: 18, column: 20 } },
     },
     matchingOccurrenceLocation: {
-      pullRequestId: '191',
-      filePath: 'src/settlement.ts',
+      pullRequestId: '191', filePath: 'src/settlement.ts',
       range: { start: { line: 42, column: 1 }, end: { line: 42, column: 20 } },
     },
   },
@@ -40,8 +38,15 @@ function createPair(overrides: Partial<CandidatePairReport> = {}): CandidatePair
       state: 'COMPLETED',
       result: {
         status: 'RISK_IDENTIFIED',
-        potentialIntegrationProblem: 'PR #184 changes processPayment so that currency is required.',
-        reviewerAction: 'Check src/settlement.ts and ensure invoice.currency is passed to processPayment.',
+        likelyOutcome: 'Invoice settlement may fail.',
+        pullRequestAContribution: 'PR #184 requires every payment to include a currency.',
+        pullRequestBContribution: 'PR #191 adds settlement using only an amount.',
+        combinedEffect: 'The settlement caller may not satisfy the updated payment contract.',
+        relevantCode: {
+          pullRequestA: [{ pullRequestId: '184', technicalTerm: 'processPayment', filePath: 'src/payment.service.ts', startLine: 18 }],
+          pullRequestB: [{ pullRequestId: '191', technicalTerm: 'processPayment', filePath: 'src/settlement.ts', startLine: 42 }],
+        },
+        reviewerAction: 'Check src/settlement.ts and pass the invoice currency.',
         confidence: 'HIGH',
         severity: 'HIGH',
       },
@@ -62,17 +67,27 @@ describe('CandidatePairResult', () => {
     TestBed.configureTestingModule({ imports: [CandidatePairResult] });
   });
 
-  it('shows the risk explanation, reviewer action, severity, confidence and evidence', () => {
+  it('shows the structured risk explanation, reviewer action and validated relevant locations', () => {
     const fixture = renderPair(createPair());
     const text = fixture.nativeElement.textContent as string;
 
-    expect(text).toContain('Risk identified');
-    expect(text).toContain('PR #184 changes processPayment so that currency is required.');
+    expect(text).toContain('Likely outcome');
+    expect(text).toContain('Invoice settlement may fail.');
+    expect(text).toContain('How the PRs interact');
+    expect(text).toContain('PR #184 requires every payment to include a currency.');
+    expect(text).toContain('PR #191 adds settlement using only an amount.');
+    expect(text).toContain('If both PRs are merged');
+    expect(text).toContain('The settlement caller may not satisfy the updated payment contract.');
+    const marker = fixture.debugElement.query(By.css('.risk-term-marker')).nativeElement as HTMLButtonElement;
+    const tooltip = fixture.debugElement.query(By.css('[role="tooltip"]')).nativeElement as HTMLElement;
+    expect(marker.querySelector('svg')).not.toBeNull();
+    expect(marker.getAttribute('aria-describedby')).toBe(tooltip.id);
+    expect(tooltip.textContent?.trim()).toBe('Linked to the reported risk locations');
+    expect(text).toContain('src/payment.service.ts');
+    expect(text).toContain('Line 18');
+    expect(text).toContain('src/settlement.ts');
+    expect(text).toContain('Line 42');
     expect(text).toContain('Check src/settlement.ts');
-    expect(text).toContain('High');
-    expect(text).toContain('processPayment');
-    expect(text).toContain('src/payment.service.ts:18');
-    expect(text).toContain('src/settlement.ts:42');
 
     const links = fixture.debugElement.queryAll(By.css('a.pr-link'));
     expect(links.length).toBe(2);
@@ -81,113 +96,106 @@ describe('CandidatePairResult', () => {
     expect(links[0].nativeElement.getAttribute('href')).toBe(pullRequestA.webUrl);
   });
 
-  it('does not render an expansion control when the explanation is 500 characters or fewer', () => {
-    const fixture = renderPair(createPair());
-    const button = fixture.debugElement.query(By.css('.link-button'));
-    expect(button).toBeNull();
+  it('groups all technical occurrences by term and pull request behind one collapsed control', () => {
+    const repeatedTermMatches: readonly TechnicalTermMatch[] = [
+      technicalTermMatches[0]!,
+      {
+        ...technicalTermMatches[0]!,
+        changedRegionLocation: {
+          pullRequestId: '184', filePath: 'src/payment.types.ts',
+          range: { start: { line: 9, column: 1 }, end: { line: 9, column: 20 } },
+        },
+        matchingOccurrenceLocation: {
+          pullRequestId: '191', filePath: 'src/settlement.ts',
+          range: { start: { line: 57, column: 1 }, end: { line: 57, column: 20 } },
+        },
+      },
+    ];
+    const fixture = renderPair(createPair({ technicalTermMatches: repeatedTermMatches }));
+
+    expect(fixture.debugElement.queryAll(By.css('.shared-term-list code'))).toHaveLength(1);
+    const details = fixture.debugElement.query(By.css('.technical-details'));
+    expect(details.nativeElement.open).toBe(false);
+    const detailsText = details.nativeElement.textContent as string;
+    expect(detailsText).toContain('Occurrences in PR #184');
+    expect(detailsText).toContain('src/payment.service.ts');
+    expect(detailsText).toContain('src/payment.types.ts');
+    expect(detailsText).toContain('Occurrences in PR #191');
+    expect(detailsText).toContain('Lines 42, 57');
+    expect(detailsText).not.toContain('supporting relationships');
+    expect(detailsText).not.toContain('Changed locations');
+    expect(detailsText).not.toContain('Matching locations');
   });
 
-  it('collapses a long explanation and expands it accessibly on toggle', () => {
-    const longExplanation = 'x'.repeat(501);
-    const fixture = renderPair(
-      createPair({
-        assessment: {
-          state: 'COMPLETED',
-          result: {
-            status: 'RISK_IDENTIFIED',
-            potentialIntegrationProblem: longExplanation,
-            reviewerAction: 'Check the affected file.',
-            confidence: 'MEDIUM',
-            severity: 'MEDIUM',
-          },
-        },
-      }),
+  it('marks only the exact shared term linked to the reported risk when locations overlap', () => {
+    const sameLocationsForAnotherTerm: TechnicalTermMatch = {
+      ...technicalTermMatches[0]!,
+      technicalTerm: 'theme',
+    };
+    const fixture = renderPair(createPair({
+      technicalTermMatches: [...technicalTermMatches, sameLocationsForAnotherTerm],
+    }));
+
+    const sharedTerms = fixture.debugElement.queryAll(By.css('.shared-term-list .term-item'));
+    const markedTerms = sharedTerms.filter(
+      (term) => term.query(By.css('.risk-term-marker')) !== null,
     );
 
-    const paragraph = fixture.debugElement.query(By.css('.copy'));
-    expect(paragraph.classes['clamped']).toBe(true);
-
-    const button = fixture.debugElement.query(By.css('.link-button'));
-    expect(button.nativeElement.textContent.trim()).toBe('Show full analysis');
-    expect(button.attributes['aria-expanded']).toBe('false');
-    const controlsId = button.attributes['aria-controls'];
-    expect(controlsId).toBeTruthy();
-    expect(paragraph.nativeElement.id).toBe(controlsId);
-
-    button.nativeElement.click();
-    fixture.detectChanges();
-
-    expect(button.nativeElement.textContent.trim()).toBe('Show less');
-    expect(button.attributes['aria-expanded']).toBe('true');
-    expect(paragraph.classes['clamped']).toBeFalsy();
+    expect(sharedTerms).toHaveLength(2);
+    expect(markedTerms).toHaveLength(1);
+    expect(markedTerms[0]!.nativeElement.textContent).toContain('processPayment');
+    expect(markedTerms[0]!.nativeElement.textContent).not.toContain('theme');
   });
 
-  it('renders an assessment-not-run card with deterministic evidence and distinct reason wording', () => {
-    const insufficientContext = renderPair(
-      createPair({
-        assessment: {
-          state: 'NOT_RUN',
-          reason: 'INSUFFICIENT_CONTEXT',
-          message: 'A Technical Term Match was found, but the matching source context could not be retained.',
-        },
-      }),
-    );
-    const insufficientText = insufficientContext.nativeElement.textContent as string;
-    expect(insufficientText).toContain('Assessment not run');
-    expect(insufficientText).toContain('Insufficient context for an assessment');
-    expect(insufficientText).toContain('matching source context could not be retained');
-    expect(insufficientText).toContain('processPayment');
-    expect(insufficientText).not.toContain('No risk identified');
-    expect(insufficientText).not.toContain('Severity');
-    const evidenceHeadings = insufficientContext.debugElement.queryAll(By.css('.evidence-label'));
-    expect(evidenceHeadings.length).toBe(1);
-    expect(evidenceHeadings[0].nativeElement.textContent.trim()).toBe('Deterministic evidence remains visible');
+  it('renders an assessment-not-run card with shared terms but no inferred relevant locations', () => {
+    const fixture = renderPair(createPair({
+      assessment: {
+        state: 'NOT_RUN',
+        reason: 'INSUFFICIENT_CONTEXT',
+        message: 'Matching source context could not be retained.',
+      },
+    }));
+    const text = fixture.nativeElement.textContent as string;
 
-    const providerFailure = renderPair(
-      createPair({
-        assessment: {
-          state: 'NOT_RUN',
-          reason: 'PROVIDER_FAILURE',
-          message: 'The assessment provider request failed.',
-        },
-      }),
-    );
-    const providerFailureText = providerFailure.nativeElement.textContent as string;
-    expect(providerFailureText).toContain('The assessment provider could not complete');
+    expect(text).toContain('Assessment not run');
+    expect(text).toContain('Insufficient context for an assessment');
+    expect(text).toContain('processPayment');
+    expect(text).not.toContain('Locations supporting this risk');
+    expect(fixture.debugElement.query(By.css('.evidence-label')).nativeElement.textContent.trim())
+      .toBe('Shared technical terms');
   });
 
   it('renders a no-risk row collapsed by default and expands details accessibly', () => {
-    const fixture = renderPair(
-      createPair({
-        assessment: {
-          state: 'COMPLETED',
-          result: {
-            status: 'NO_RISK_IDENTIFIED',
-            noRiskExplanation: 'The shared term handler refers to unrelated local functions.',
-            confidence: 'MEDIUM',
-          },
+    const fixture = renderPair(createPair({
+      assessment: {
+        state: 'COMPLETED',
+        result: {
+          status: 'NO_RISK_IDENTIFIED',
+          relationshipSummary: 'The same helper name appears in both pull requests.',
+          independenceReason: 'The supplied functions are local to separate modules.',
+          coverageLimitation: 'One unsupported file was outside the bounded analysis.',
+          confidence: 'MEDIUM',
         },
-      }),
-    );
+      },
+    }));
 
-    expect((fixture.nativeElement.textContent as string)).toContain('No risk identified');
     const details = fixture.debugElement.query(By.css('.safe-details'));
-    expect(details.attributes['hidden']).toBe('');
     expect(details.nativeElement.hidden).toBe(true);
-    expect(getComputedStyle(details.nativeElement).display).toBe('none');
-
     const toggle = fixture.debugElement.query(By.css('.safe-toggle'));
     expect(toggle.nativeElement.textContent.trim()).toBe('View details');
     expect(toggle.attributes['aria-expanded']).toBe('false');
-    expect(toggle.attributes['aria-controls']).toBe(details.nativeElement.id);
 
     toggle.nativeElement.click();
     fixture.detectChanges();
 
     expect(toggle.nativeElement.textContent.trim()).toBe('Hide details');
     expect(toggle.attributes['aria-expanded']).toBe('true');
-    expect(details.attributes['hidden']).toBeFalsy();
-    expect(getComputedStyle(details.nativeElement).display).not.toBe('none');
-    expect((fixture.nativeElement.textContent as string)).toContain('unrelated local functions');
+    expect(details.nativeElement.hidden).toBe(false);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Why these PRs were compared');
+    expect(text).toContain('The same helper name appears in both pull requests.');
+    expect(text).toContain('Why the changes appear independent');
+    expect(text).toContain('The supplied functions are local to separate modules.');
+    expect(text).toContain('Coverage limitation');
   });
 });

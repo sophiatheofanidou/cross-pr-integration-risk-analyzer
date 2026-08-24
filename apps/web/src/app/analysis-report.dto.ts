@@ -16,17 +16,33 @@ export interface AnalysisRequest {
 export type RiskConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 export type RiskSeverity = 'LOW' | 'MEDIUM' | 'HIGH';
 
+export interface RelevantCodeLocation {
+  readonly pullRequestId: string;
+  readonly technicalTerm: string;
+  readonly filePath: string;
+  readonly startLine: number;
+}
+
 export type RiskResult =
   | {
       readonly status: 'RISK_IDENTIFIED';
-      readonly potentialIntegrationProblem: string;
+      readonly likelyOutcome: string;
+      readonly pullRequestAContribution: string;
+      readonly pullRequestBContribution: string;
+      readonly combinedEffect: string;
+      readonly relevantCode: {
+        readonly pullRequestA: readonly RelevantCodeLocation[];
+        readonly pullRequestB: readonly RelevantCodeLocation[];
+      };
       readonly reviewerAction: string;
       readonly confidence: RiskConfidence;
       readonly severity: RiskSeverity;
     }
   | {
       readonly status: 'NO_RISK_IDENTIFIED';
-      readonly noRiskExplanation: string;
+      readonly relationshipSummary: string;
+      readonly independenceReason: string;
+      readonly coverageLimitation?: string;
       readonly confidence: RiskConfidence;
     };
 

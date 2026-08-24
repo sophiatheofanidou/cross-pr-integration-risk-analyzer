@@ -65,8 +65,8 @@
                 }
               </span>
               <span class="overview-secondary"
-                >{{ entry.pair.technicalTermMatches.length }} Technical Term
-                {{ entry.pair.technicalTermMatches.length === 1 ? 'Match' : 'Matches' }}</span
+                >{{ distinctTerms(entry.pair).length }} shared technical
+                {{ distinctTerms(entry.pair).length === 1 ? 'term' : 'terms' }}</span
               >
             </td>
             <td>

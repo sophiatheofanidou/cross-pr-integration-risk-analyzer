@@ -16,7 +16,14 @@ function riskPair(id: string): CandidatePairReport {
       state: 'COMPLETED',
       result: {
         status: 'RISK_IDENTIFIED',
-        potentialIntegrationProblem: 'problem',
+        likelyOutcome: 'The build may fail.',
+        pullRequestAContribution: 'PR #184 changes the contract.',
+        pullRequestBContribution: `PR #${id} uses the previous contract.`,
+        combinedEffect: 'The combined call may be incompatible.',
+        relevantCode: {
+          pullRequestA: [{ pullRequestId: '184', technicalTerm: 'sharedTerm', filePath: 'src/a.ts', startLine: 1 }],
+          pullRequestB: [{ pullRequestId: id, technicalTerm: 'sharedTerm', filePath: 'src/b.ts', startLine: 2 }],
+        },
         reviewerAction: 'action',
         confidence: 'HIGH',
         severity: 'HIGH',
@@ -41,7 +48,12 @@ function noRiskPair(id: string): CandidatePairReport {
     technicalTermMatches: [],
     assessment: {
       state: 'COMPLETED',
-      result: { status: 'NO_RISK_IDENTIFIED', noRiskExplanation: 'coincidental', confidence: 'MEDIUM' },
+      result: {
+        status: 'NO_RISK_IDENTIFIED',
+        relationshipSummary: 'The same name appears in both pull requests.',
+        independenceReason: 'The supplied functions are independent.',
+        confidence: 'MEDIUM',
+      },
     },
   };
 }

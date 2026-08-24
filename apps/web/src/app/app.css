@@ -5,7 +5,7 @@
 .window {
   background: var(--background);
   border: 1px solid var(--line);
-  max-width: 1120px;
+  max-width: 1360px;
   margin: 0 auto;
 }
 
