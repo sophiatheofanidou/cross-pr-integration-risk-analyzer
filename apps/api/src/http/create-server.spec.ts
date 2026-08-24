@@ -25,7 +25,8 @@ function pullRequest(id: string, path: string): NormalizedPullRequest {
 
 const noRiskIdentified: RiskResult = {
   status: 'NO_RISK_IDENTIFIED',
-  noRiskExplanation: 'The shared name belongs to unrelated local functions.',
+  relationshipSummary: 'The shared name appears in both pull requests.',
+  independenceReason: 'The supplied functions are local to separate modules.',
   confidence: 'HIGH',
 };
 

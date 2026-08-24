@@ -108,6 +108,35 @@ describe('TypeScriptStructuralAnalyzer', () => {
     expect(termNames(result.occurrences)).not.toContain('processPayment');
   });
 
+  it('filters unshadowed standard-library helpers while preserving repository-owned terms', () => {
+    const content = [
+      'function formatReference(reference: number) {',
+      "  return `SHIP-${String(reference).padStart(6, '0')}`;",
+      '}',
+      '',
+    ].join('\n');
+
+    const result = analyzer.analyze({
+      filePath: 'shipping-reference.ts',
+      content,
+      changedRanges: [range(1, 1, 3, 2)],
+    });
+    const names = termNames(result.occurrences);
+
+    expect(names).toContain('formatReference');
+    expect(names).toContain('reference');
+    expect(names).not.toContain('String');
+    expect(names).not.toContain('padStart');
+  });
+
+  it('preserves a project declaration that shadows a standard-library name', () => {
+    const content = ['function String(value: number) {', '  return value;', '}', ''].join('\n');
+
+    const result = analyzer.analyze({ filePath: 'custom-string.ts', content, changedRanges: [] });
+
+    expect(termNames(result.occurrences)).toContain('String');
+  });
+
   it('finds a matching occurrence inside an object property value without treating the value text as a term', () => {
     const content = ['const config = {', '  handler: processPayment,', '};', ''].join('\n');
 

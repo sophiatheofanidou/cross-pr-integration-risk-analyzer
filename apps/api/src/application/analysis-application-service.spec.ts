@@ -3,8 +3,13 @@ import { FakeSourceControlProvider } from '../candidate-discovery/__fixtures__/f
 import type { NormalizedPullRequest } from '../domain/pull-request.js';
 import type { RiskResult } from '../domain/risk-result.js';
 import { FakeRiskAnalysisProvider } from '../risk-analysis/__fixtures__/fake-risk-analysis-provider.js';
+import type { RiskAnalysisProvider } from '../risk-analysis/risk-analysis-provider.js';
 import { TypeScriptStructuralAnalyzer } from '../structural-analysis/typescript/typescript-structural-analyzer.js';
-import { runAnalysis, type AnalysisDependencies } from './analysis-application-service.js';
+import {
+  runAnalysis,
+  type AnalysisDependencies,
+  type ProviderFailureDiagnostic,
+} from './analysis-application-service.js';
 
 const repository = { owner: 'acme', repo: 'payments-platform' };
 const analyzer = new TypeScriptStructuralAnalyzer();
@@ -24,7 +29,7 @@ function pullRequest(id: string, path: string, changeType: 'ADDED' = 'ADDED'): N
 
 function dependencies(
   sourceControlProvider: FakeSourceControlProvider,
-  riskAnalysisProvider: FakeRiskAnalysisProvider,
+  riskAnalysisProvider: RiskAnalysisProvider,
   contextRetrievalBounds?: AnalysisDependencies['contextRetrievalBounds'],
 ): AnalysisDependencies {
   return {
@@ -37,8 +42,14 @@ function dependencies(
 
 const riskIdentified: RiskResult = {
   status: 'RISK_IDENTIFIED',
-  potentialIntegrationProblem:
-    'PR A changes processPayment in a way PR B still calls without adjustment.',
+  likelyOutcome: 'Payment processing may fail.',
+  pullRequestAContribution: 'PR A changes the processPayment contract.',
+  pullRequestBContribution: 'PR B continues to use the previous contract.',
+  combinedEffect: 'The combined caller may no longer satisfy the updated contract.',
+  relevantCode: {
+    pullRequestA: [{ pullRequestId: '1', technicalTerm: 'processPayment', filePath: 'src/a.ts', startLine: 1 }],
+    pullRequestB: [{ pullRequestId: '2', technicalTerm: 'processPayment', filePath: 'src/b.ts', startLine: 1 }],
+  },
   reviewerAction: 'Verify the combined callers of processPayment.',
   confidence: 'HIGH',
   severity: 'MEDIUM',
@@ -46,7 +57,8 @@ const riskIdentified: RiskResult = {
 
 const noRiskIdentified: RiskResult = {
   status: 'NO_RISK_IDENTIFIED',
-  noRiskExplanation: 'The shared name belongs to unrelated local functions.',
+  relationshipSummary: 'The shared name appears in both pull requests.',
+  independenceReason: 'The supplied functions are local to separate modules.',
   confidence: 'HIGH',
 };
 
@@ -143,6 +155,63 @@ describe('runAnalysis', () => {
     expect(report.candidatePairs[0]!.technicalTermMatches.length).toBeGreaterThan(0);
   });
 
+  it('assesses at most two Candidate Pairs concurrently while preserving discovery order', async () => {
+    const sourceControlProvider = new FakeSourceControlProvider();
+    const pairInputs = [
+      ['pr-a', 'src/a.ts', 'export function alpha() { return 1; }\n'],
+      ['pr-b', 'src/b.ts', 'const alphaResult = alpha();\n'],
+      ['pr-c', 'src/c.ts', 'export function beta() { return 2; }\n'],
+      ['pr-d', 'src/d.ts', 'const betaResult = beta();\n'],
+      ['pr-e', 'src/e.ts', 'export function gamma() { return 3; }\n'],
+      ['pr-f', 'src/f.ts', 'const gammaResult = gamma();\n'],
+    ] as const;
+    for (const [id, path, content] of pairInputs) {
+      sourceControlProvider.setFile(`${id}-head`, path, content);
+    }
+    sourceControlProvider.setEligiblePullRequests(
+      pairInputs.map(([id, path]) => pullRequest(id, path)),
+    );
+
+    let active = 0;
+    let maxActive = 0;
+    let started = 0;
+    const releases: (() => void)[] = [];
+    const provider: RiskAnalysisProvider = {
+      async assess(): Promise<RiskResult> {
+        active++;
+        started++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise<void>((resolve) => releases.push(resolve));
+        active--;
+        return noRiskIdentified;
+      },
+    };
+
+    const waitFor = async (condition: () => boolean): Promise<void> => {
+      for (let attempt = 0; attempt < 100 && !condition(); attempt++) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      }
+      expect(condition()).toBe(true);
+    };
+
+    const reportPromise = runAnalysis(
+      { repository, targetBranch: 'main' },
+      dependencies(sourceControlProvider, provider),
+    );
+
+    await waitFor(() => started === 2);
+    expect(maxActive).toBe(2);
+    releases.splice(0).forEach((release) => release());
+
+    await waitFor(() => started === 3);
+    expect(maxActive).toBe(2);
+    releases.splice(0).forEach((release) => release());
+
+    const report = await reportPromise;
+    expect(report.candidatePairs.map((pair) => `${pair.pullRequestA.id}-${pair.pullRequestB.id}`))
+      .toEqual(['pr-a-pr-b', 'pr-c-pr-d', 'pr-e-pr-f']);
+  });
+
   it('reports a Candidate Pair without sufficient context as NOT_RUN/INSUFFICIENT_CONTEXT', async () => {
     const sourceControlProvider = new FakeSourceControlProvider();
     sourceControlProvider.setFile('pr-a-head', 'src/a.ts', 'export function processPayment() { return 1; }\n');
@@ -187,12 +256,28 @@ describe('runAnalysis', () => {
       pullRequest('pr-c', 'src/c.ts'),
       pullRequest('pr-d', 'src/d.ts'),
     ]);
-    const providerFailure = new Error('provider unavailable');
+    const providerFailure = Object.assign(new Error('provider unavailable'), {
+      reason: 'INVALID_OUTPUT',
+      requestID: 'req_test_provider_failure',
+      status: 400,
+      type: 'invalid_request_error',
+      error: {
+        error: {
+          type: 'invalid_request_error',
+          message: 'Schema is too complex for compilation.\nReduce union complexity.',
+        },
+      },
+    });
     const riskAnalysisProvider = new FakeRiskAnalysisProvider([riskIdentified, providerFailure]);
+    const diagnostics: ProviderFailureDiagnostic[] = [];
+    const baseDependencies = dependencies(sourceControlProvider, riskAnalysisProvider);
 
     const report = await runAnalysis(
       { repository, targetBranch: 'main' },
-      dependencies(sourceControlProvider, riskAnalysisProvider),
+      {
+        ...baseDependencies,
+        reportProviderFailure: (diagnostic) => diagnostics.push(diagnostic),
+      },
     );
 
     expect(report.candidatePairs).toHaveLength(2);
@@ -213,6 +298,17 @@ describe('runAnalysis', () => {
     expect(
       report.warnings.every((warning) => !JSON.stringify(warning).includes('provider unavailable')),
     ).toBe(true);
+    expect(diagnostics).toEqual([{
+      pullRequestAId: 'pr-c',
+      pullRequestBId: 'pr-d',
+      errorName: 'Error',
+      failureReason: 'INVALID_OUTPUT',
+      requestId: 'req_test_provider_failure',
+      httpStatus: 400,
+      providerErrorType: 'invalid_request_error',
+      providerMessage: 'Schema is too complex for compilation. Reduce union complexity.',
+    }]);
+    expect(JSON.stringify(diagnostics)).not.toContain('provider unavailable');
     expect(report.status).toBe('COMPLETED_WITH_WARNINGS');
   });
 

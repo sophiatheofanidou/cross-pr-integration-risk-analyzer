@@ -66,12 +66,14 @@ describe('buildRiskAssessmentPrompt', () => {
     const encodedPayload = prompt.userMessage.split('\n\n').at(-1)!;
     const parsed = JSON.parse(encodedPayload) as {
       repositoryData: {
-        technicalTermMatches: { changedRegionSnippet: string }[];
+        technicalTermEvidence: {
+          changedRegions: { snippet: string }[];
+        }[];
       };
     };
     expect(
-      parsed.repositoryData.technicalTermMatches.some((match) =>
-        match.changedRegionSnippet.includes(injectedText),
+      parsed.repositoryData.technicalTermEvidence.some((group) =>
+        group.changedRegions.some((region) => region.snippet.includes(injectedText)),
       ),
     ).toBe(true);
   });
@@ -117,8 +119,124 @@ describe('buildRiskAssessmentPrompt', () => {
     expect(promptA).toEqual(promptB);
     expect(promptA.userMessage).toContain('sharedTerm');
     expect(promptA.userMessage).toContain('changeHunk');
-    expect(promptA.userMessage).toContain('matchingOccurrenceSnippet');
+    expect(promptA.userMessage).toContain('matchingOccurrences');
     expect(sourceControlProvider.requestedKeys).toEqual(requestsBeforeContext);
+  });
+
+  it('groups matches by technical term and serializes each source location once', async () => {
+    const sourceControlProvider = new FakeSourceControlProvider();
+    sourceControlProvider.setFile(
+      'a-head',
+      'src/a.ts',
+      'export function sharedTerm() { return sharedTerm; }\n',
+    );
+    sourceControlProvider.setFile(
+      'b-head',
+      'src/b.ts',
+      'const first = sharedTerm();\nconst second = sharedTerm();\n',
+    );
+    const pullRequest = (id: string, headRevision: string, path: string): NormalizedPullRequest => ({
+      id,
+      title: `Pull request ${id}`,
+      webUrl: `https://github.com/owner/repository/pull/${id}`,
+      sourceBranch: `feature/${id}`,
+      targetBranch: 'main',
+      headRevision,
+      changeBaseRevision: `${id}-base`,
+      changedFiles: [{ path, changeType: 'ADDED' }],
+    });
+    const run = await discoverCandidates(
+      [pullRequest('a', 'a-head', 'src/a.ts'), pullRequest('b', 'b-head', 'src/b.ts')],
+      repository,
+      sourceControlProvider,
+      new TypeScriptStructuralAnalyzer(),
+    );
+    const outcome = retrieveContext(run.result.candidatePairs[0]!, run);
+    expect(outcome.sufficientContext).toBe(true);
+    if (!outcome.sufficientContext) {
+      return;
+    }
+
+    const prompt = buildRiskAssessmentPrompt(outcome.context);
+    const encodedPayload = prompt.userMessage.split('\n\n').at(-1)!;
+    const parsed = JSON.parse(encodedPayload) as {
+      repositoryData: {
+        technicalTermEvidence: {
+          technicalTerm: string;
+          changedRegions: { location: unknown }[];
+          matchingOccurrences: { location: unknown }[];
+        }[];
+      };
+    };
+
+    expect(parsed.repositoryData.technicalTermEvidence).toHaveLength(1);
+    const [group] = parsed.repositoryData.technicalTermEvidence;
+    expect(group!.technicalTerm).toBe('sharedTerm');
+    expect(new Set(group!.changedRegions.map((region) => JSON.stringify(region.location))).size)
+      .toBe(group!.changedRegions.length);
+    expect(new Set(group!.matchingOccurrences.map((occurrence) => JSON.stringify(occurrence.location))).size)
+      .toBe(group!.matchingOccurrences.length);
+  });
+
+  it('assigns distinct evidence IDs when different technical terms share the same locations', async () => {
+    const sourceControlProvider = new FakeSourceControlProvider();
+    sourceControlProvider.setFile(
+      'a-head',
+      'src/a.ts',
+      'export function sharedTerm() { return sharedTerm; }\n',
+    );
+    sourceControlProvider.setFile('b-head', 'src/b.ts', 'const value = sharedTerm();\n');
+    const pullRequest = (id: string, headRevision: string, path: string): NormalizedPullRequest => ({
+      id,
+      title: `Pull request ${id}`,
+      webUrl: `https://github.com/owner/repository/pull/${id}`,
+      sourceBranch: `feature/${id}`,
+      targetBranch: 'main',
+      headRevision,
+      changeBaseRevision: `${id}-base`,
+      changedFiles: [{ path, changeType: 'ADDED' }],
+    });
+    const run = await discoverCandidates(
+      [pullRequest('a', 'a-head', 'src/a.ts'), pullRequest('b', 'b-head', 'src/b.ts')],
+      repository,
+      sourceControlProvider,
+      new TypeScriptStructuralAnalyzer(),
+    );
+    const outcome = retrieveContext(run.result.candidatePairs[0]!, run);
+    expect(outcome.sufficientContext).toBe(true);
+    if (!outcome.sufficientContext) {
+      return;
+    }
+
+    const originalMatch = outcome.context.matches[0]!;
+    const prompt = buildRiskAssessmentPrompt({
+      ...outcome.context,
+      matches: [
+        ...outcome.context.matches,
+        {
+          ...originalMatch,
+          match: { ...originalMatch.match, technicalTerm: 'aliasTerm' },
+        },
+      ],
+    });
+
+    const originalTermEvidence = prompt.evidenceReferences.filter(
+      (reference) => reference.technicalTerm === 'sharedTerm',
+    );
+    const aliasTermEvidence = prompt.evidenceReferences.filter(
+      (reference) => reference.technicalTerm === 'aliasTerm',
+    );
+
+    expect(aliasTermEvidence).toHaveLength(2);
+    expect(new Set(prompt.evidenceReferences.map((reference) => reference.id)).size)
+      .toBe(prompt.evidenceReferences.length);
+    for (const aliasReference of aliasTermEvidence) {
+      const originalReferenceAtSameLocation = originalTermEvidence.find(
+        (reference) => JSON.stringify(reference.location) === JSON.stringify(aliasReference.location),
+      );
+      expect(originalReferenceAtSameLocation).toBeDefined();
+      expect(originalReferenceAtSameLocation!.id).not.toBe(aliasReference.id);
+    }
   });
 
   it('serializes both pull requests\' supplied IDs into repositoryData so the model can identify them', async () => {
@@ -169,18 +287,20 @@ describe('RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS content requirements', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('supplied IDs');
   });
 
-  it('requires potentialIntegrationProblem to cover the technical connection, the risky interaction and the affected behavior/flow', () => {
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('potentialIntegrationProblem');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('how the two identified pull requests are technically connected');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('incompatibility or risky interaction');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('behavior or flow that may be affected');
+  it('requires a concise outcome, one contribution per pull request and the combined effect', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('likelyOutcome');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('pullRequestA');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('pullRequestB');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('combinedEffect');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('observable outcome, not an abstract failure-mode category');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('attached to the exact pull-request ID');
   });
 
-  it('requires conditional language, forbids confirmed-defect claims, and keeps remediation out of potentialIntegrationProblem', () => {
+  it('requires conditional language, forbids confirmed-defect claims, and keeps remediation out of risk explanations', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('conditional language');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('must not include remediation or fix instructions');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('belong only in reviewerAction');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('remain understandable to a reviewer who has not read the raw evidence');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('understandable to a reviewer who has not read the repository');
   });
 
   it('requires reviewerAction to be one concrete imperative step naming the relevant supplied evidence', () => {
@@ -188,12 +308,25 @@ describe('RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS content requirements', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain(
       'one concrete imperative review step',
     );
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('relevant supplied file, symbol or data flow');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('relevant supplied symbol or data flow');
   });
 
-  it('requires noRiskExplanation to explain why the deterministic relationship appears compatible or coincidental', () => {
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('noRiskExplanation');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('appears compatible or coincidental');
+  it('requires selecting only validated deterministic evidence IDs for each pull request', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('relevantEvidenceId');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('never invent an ID, file path or line number');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('central to the described interaction');
+  });
+
+  it('structures no-risk reasoning and its coverage limitation separately', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('relationshipSummary');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('independenceReason');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('coverageLimitation');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('supplied bounded context');
+  });
+
+  it('keeps internal evidence and schema identifiers out of reviewer-facing prose', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('Never mention internal evidence IDs');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('response-schema field names');
   });
 
   it('distinguishes deterministic facts from semantic inference and preserves prompt-injection protections', () => {
@@ -206,12 +339,13 @@ describe('RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS content requirements', () => {
   it('preserves the existing meanings of confidence and severity', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('Confidence describes evidential support');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('severity describes potential impact if an identified risk is real');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('repository-wide build/type-check/deployment blocker');
   });
 
-  it('no longer references the superseded explanation/changedAssumption/reviewerCheck field names', () => {
+  it('no longer references the superseded risk-result field names', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).not.toContain('potentialIntegrationProblem');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).not.toContain('changedAssumption');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).not.toContain('reviewerCheck');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).not.toMatch(/\bexplanation\b/);
   });
 
   it('does not require a changed-assumption mechanism for every identified risk', () => {

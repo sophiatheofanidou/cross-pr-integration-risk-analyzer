@@ -24,6 +24,9 @@ async function main(): Promise<void> {
       model: config.claudeModel,
       apiKey: config.anthropicApiKey,
     }),
+    reportProviderFailure: (diagnostic) => {
+      console.error('Risk assessment provider failure:', diagnostic);
+    },
   });
 
   await app.listen({ port: config.port, host: '127.0.0.1' });

@@ -61,6 +61,40 @@ const DECLARATION_NODE_TYPES = new Set([
 ]);
 
 /**
+ * Standard-library globals are not repository-owned integration contracts.
+ * They are ignored only when the file does not declare a same-named symbol,
+ * so a project is still free to define (for example) its own `String`.
+ */
+const STANDARD_LIBRARY_GLOBALS = new Set([
+  'Array',
+  'BigInt',
+  'Boolean',
+  'Date',
+  'Error',
+  'Intl',
+  'JSON',
+  'Map',
+  'Math',
+  'Number',
+  'Object',
+  'Promise',
+  'Reflect',
+  'RegExp',
+  'Set',
+  'String',
+  'Symbol',
+  'URL',
+  'URLSearchParams',
+  'WeakMap',
+  'WeakSet',
+]);
+
+const STANDARD_LIBRARY_MEMBER_NAMES = new Set([
+  'padEnd',
+  'padStart',
+]);
+
+/**
  * Node types that bound how far an occurrence's enclosing snippet grows.
  * Walking up from an occurrence stops just below the nearest one of these,
  * so a top-level declaration's enclosing range is itself, while a
@@ -103,6 +137,48 @@ function collectNameNodes(
   for (const child of node.namedChildren) {
     collectNameNodes(child, results);
   }
+}
+
+function isDeclarationName(node: Parser.SyntaxNode): boolean {
+  const parent = node.parent;
+  return parent !== null &&
+    DECLARATION_NODE_TYPES.has(parent.type) &&
+    parent.childForFieldName('name')?.id === node.id;
+}
+
+function isUnshadowedStandardLibraryGlobal(
+  node: Parser.SyntaxNode,
+  declaredNames: ReadonlySet<string>,
+): boolean {
+  return node.type === 'identifier' &&
+    STANDARD_LIBRARY_GLOBALS.has(node.text) &&
+    !declaredNames.has(node.text);
+}
+
+function isStandardLibraryMember(
+  node: Parser.SyntaxNode,
+  declaredNames: ReadonlySet<string>,
+): boolean {
+  if (
+    node.type !== 'property_identifier' ||
+    !STANDARD_LIBRARY_MEMBER_NAMES.has(node.text) ||
+    declaredNames.has(node.text)
+  ) {
+    return false;
+  }
+  const memberExpression = node.parent;
+  const receiver = memberExpression?.type === 'member_expression'
+    ? memberExpression.childForFieldName('object')
+    : null;
+  if (receiver === null) {
+    return false;
+  }
+  if (receiver.type === 'string') {
+    return true;
+  }
+  return [...STANDARD_LIBRARY_GLOBALS].some(
+    (globalName) => !declaredNames.has(globalName) && receiver.text.startsWith(`${globalName}(`),
+  );
 }
 
 function findEnclosingRange(node: Parser.SyntaxNode): Parser.SyntaxNode {
@@ -174,7 +250,16 @@ export class TypeScriptStructuralAnalyzer implements StructuralAnalyzer {
     const nameNodes: Parser.SyntaxNode[] = [];
     collectNameNodes(rootNode, nameNodes);
 
-    const occurrences: StructuralTermOccurrence[] = nameNodes.map((node) => ({
+    const declaredNames = new Set(
+      nameNodes.filter(isDeclarationName).map((node) => node.text),
+    );
+    const repositoryNameNodes = nameNodes.filter(
+      (node) =>
+        !isUnshadowedStandardLibraryGlobal(node, declaredNames) &&
+        !isStandardLibraryMember(node, declaredNames),
+    );
+
+    const occurrences: StructuralTermOccurrence[] = repositoryNameNodes.map((node) => ({
       technicalTerm: node.text,
       range: toSourceRange(node),
       enclosingRange: toSourceRange(findEnclosingRange(node)),

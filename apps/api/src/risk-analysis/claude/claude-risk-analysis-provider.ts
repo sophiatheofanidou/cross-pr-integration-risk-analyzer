@@ -19,11 +19,17 @@ export type ClaudeRiskAnalysisFailureReason =
 
 export class ClaudeRiskAnalysisError extends Error {
   readonly reason: ClaudeRiskAnalysisFailureReason;
+  readonly requestId?: string;
 
-  constructor(reason: ClaudeRiskAnalysisFailureReason, message: string, options?: ErrorOptions) {
+  constructor(
+    reason: ClaudeRiskAnalysisFailureReason,
+    message: string,
+    options?: ErrorOptions & { readonly requestId?: string },
+  ) {
     super(message, options);
     this.name = 'ClaudeRiskAnalysisError';
     this.reason = reason;
+    this.requestId = options?.requestId;
   }
 }
 
@@ -35,7 +41,7 @@ export interface ClaudeRiskAnalysisProviderConfig {
   readonly client?: Anthropic;
 }
 
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 2048;
 
 export class ClaudeRiskAnalysisProvider implements RiskAnalysisProvider {
   private readonly client: Anthropic;
@@ -76,11 +82,13 @@ export class ClaudeRiskAnalysisProvider implements RiskAnalysisProvider {
         format: zodOutputFormat(claudeRiskResultSchema),
       },
     });
+    const requestId = message._request_id ?? undefined;
 
     if (message.stop_reason === 'refusal') {
       throw new ClaudeRiskAnalysisError(
         'REFUSAL',
         'Claude refused the Risk Assessment request',
+        { requestId },
       );
     }
     if (
@@ -90,6 +98,7 @@ export class ClaudeRiskAnalysisProvider implements RiskAnalysisProvider {
       throw new ClaudeRiskAnalysisError(
         'INCOMPLETE_OUTPUT',
         'Claude Risk Assessment output was incomplete because a token or context limit was reached',
+        { requestId },
       );
     }
     const textBlocks = message.content.filter((block) => block.type === 'text');
@@ -97,17 +106,23 @@ export class ClaudeRiskAnalysisProvider implements RiskAnalysisProvider {
       throw new ClaudeRiskAnalysisError(
         'INVALID_OUTPUT',
         'Claude returned an unexpected structured-output content shape',
+        { requestId },
       );
     }
 
     try {
       const parsedJson: unknown = JSON.parse(textBlocks[0]!.text);
-      return normalizeClaudeRiskResult(claudeRiskResultSchema.parse(parsedJson));
+      return normalizeClaudeRiskResult(
+        claudeRiskResultSchema.parse(parsedJson),
+        prompt.evidenceReferences,
+        prompt.pullRequestAId,
+        prompt.pullRequestBId,
+      );
     } catch (error) {
       throw new ClaudeRiskAnalysisError(
         'INVALID_OUTPUT',
         'Claude structured output could not be parsed or validated',
-        { cause: error },
+        { cause: error, requestId },
       );
     }
   }

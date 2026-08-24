@@ -26,14 +26,35 @@ describe.runIf(smokeEnabled)('ClaudeRiskAnalysisProvider real-provider smoke tes
       systemInstructions:
         'Return an advisory structured Risk Result for only the supplied synthetic data.',
       userMessage:
-        '{"repositoryData":{"pullRequestA":"renames a local variable","pullRequestB":"changes an unrelated comment"}}',
+        '{"repositoryData":{"pullRequestA":{"id":"1","change":"renames a local variable","evidenceId":"E1"},"pullRequestB":{"id":"2","change":"changes an unrelated comment","evidenceId":"E2"}}}',
+      evidenceReferences: [
+        {
+          id: 'E1',
+          technicalTerm: 'syntheticTerm',
+          location: {
+            pullRequestId: '1', filePath: 'src/a.ts',
+            range: { start: { line: 1, column: 1 }, end: { line: 1, column: 2 } },
+          },
+        },
+        {
+          id: 'E2',
+          technicalTerm: 'syntheticTerm',
+          location: {
+            pullRequestId: '2', filePath: 'src/b.ts',
+            range: { start: { line: 1, column: 1 }, end: { line: 1, column: 2 } },
+          },
+        },
+      ],
+      pullRequestAId: '1',
+      pullRequestBId: '2',
     });
 
     expect(['RISK_IDENTIFIED', 'NO_RISK_IDENTIFIED']).toContain(result.status);
     const explanationLength =
       result.status === 'RISK_IDENTIFIED'
-        ? result.potentialIntegrationProblem.length
-        : result.noRiskExplanation.length;
+        ? result.likelyOutcome.length
+        : result.relationshipSummary.length + result.independenceReason.length +
+          (result.coverageLimitation?.length ?? 0);
     expect(explanationLength).toBeGreaterThan(0);
   }, SMOKE_TEST_TIMEOUT_MS);
 });

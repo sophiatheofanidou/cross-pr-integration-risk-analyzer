@@ -3,8 +3,10 @@
 import { z } from 'zod';
 import type { AnalysisReportDto } from '../application/analysis-report-dto.js';
 import {
-  NO_RISK_EXPLANATION_MAX_LENGTH,
-  POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH,
+  COMBINED_EFFECT_MAX_LENGTH,
+  LIKELY_OUTCOME_MAX_LENGTH,
+  NO_RISK_SECTION_MAX_LENGTH,
+  PULL_REQUEST_CONTRIBUTION_MAX_LENGTH,
   REVIEWER_ACTION_MAX_LENGTH,
 } from '../domain/risk-result.js';
 
@@ -37,17 +39,32 @@ const githubRepositoryUrl = githubUrl.refine((value) => {
 
 const confidence = z.enum(['LOW', 'MEDIUM', 'HIGH']);
 const severity = z.enum(['LOW', 'MEDIUM', 'HIGH']);
+const relevantCodeLocation = z.object({
+  pullRequestId: requiredText(),
+  technicalTerm: requiredText(),
+  filePath: requiredText(),
+  startLine: positiveInteger,
+}).strict();
 const riskResult = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('RISK_IDENTIFIED'),
-    potentialIntegrationProblem: requiredText(POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH),
+    likelyOutcome: requiredText(LIKELY_OUTCOME_MAX_LENGTH),
+    pullRequestAContribution: requiredText(PULL_REQUEST_CONTRIBUTION_MAX_LENGTH),
+    pullRequestBContribution: requiredText(PULL_REQUEST_CONTRIBUTION_MAX_LENGTH),
+    combinedEffect: requiredText(COMBINED_EFFECT_MAX_LENGTH),
+    relevantCode: z.object({
+      pullRequestA: z.array(relevantCodeLocation).min(1).max(2),
+      pullRequestB: z.array(relevantCodeLocation).min(1).max(2),
+    }).strict(),
     reviewerAction: requiredText(REVIEWER_ACTION_MAX_LENGTH),
     confidence,
     severity,
   }).strict(),
   z.object({
     status: z.literal('NO_RISK_IDENTIFIED'),
-    noRiskExplanation: requiredText(NO_RISK_EXPLANATION_MAX_LENGTH),
+    relationshipSummary: requiredText(NO_RISK_SECTION_MAX_LENGTH),
+    independenceReason: requiredText(NO_RISK_SECTION_MAX_LENGTH),
+    coverageLimitation: requiredText(NO_RISK_SECTION_MAX_LENGTH).optional(),
     confidence,
   }).strict(),
 ]);

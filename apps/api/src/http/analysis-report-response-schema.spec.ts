@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH } from '../domain/risk-result.js';
+import { LIKELY_OUTCOME_MAX_LENGTH } from '../domain/risk-result.js';
 import { analysisReportDtoSchema } from './analysis-report-response-schema.js';
 
 function validReport() {
@@ -37,7 +37,14 @@ function validReport() {
         state: 'COMPLETED',
         result: {
           status: 'RISK_IDENTIFIED',
-          potentialIntegrationProblem: 'The combined changes may pass currency inconsistently.',
+          likelyOutcome: 'Payment processing may fail.',
+          pullRequestAContribution: 'PR #184 requires a currency.',
+          pullRequestBContribution: 'PR #191 uses the previous contract.',
+          combinedEffect: 'The combined currency flow may be incompatible.',
+          relevantCode: {
+            pullRequestA: [{ pullRequestId: '184', technicalTerm: 'processPayment', filePath: 'src/payment.ts', startLine: 1 }],
+            pullRequestB: [{ pullRequestId: '191', technicalTerm: 'processPayment', filePath: 'src/settlement.ts', startLine: 2 }],
+          },
           reviewerAction: 'Verify the currency flow through processPayment.',
           confidence: 'HIGH', severity: 'HIGH',
         },
@@ -58,7 +65,7 @@ describe('analysisReportDtoSchema', () => {
     ['a fractional count', (report: ReturnType<typeof validReport>) => { report.summary.candidatePairCount = 1.5; }],
     ['a negative count', (report: ReturnType<typeof validReport>) => { report.summary.notAssessedCount = -1; }],
     ['a zero source coordinate', (report: ReturnType<typeof validReport>) => { report.candidatePairs[0]!.technicalTermMatches[0]!.changedRegionLocation.range.start.line = 0; }],
-    ['an oversized risk explanation', (report: ReturnType<typeof validReport>) => { report.candidatePairs[0]!.assessment.result.potentialIntegrationProblem = 'x'.repeat(POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH + 1); }],
+    ['an oversized likely outcome', (report: ReturnType<typeof validReport>) => { report.candidatePairs[0]!.assessment.result.likelyOutcome = 'x'.repeat(LIKELY_OUTCOME_MAX_LENGTH + 1); }],
     ['an unexpected nested property', (report: ReturnType<typeof validReport>) => { Object.assign(report.candidatePairs[0]!.assessment.result, { changedAssumption: 'legacy' }); }],
   ])('rejects %s', (_description, mutate) => {
     const report = validReport();

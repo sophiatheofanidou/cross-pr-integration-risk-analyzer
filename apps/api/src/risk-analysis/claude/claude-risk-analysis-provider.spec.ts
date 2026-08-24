@@ -9,6 +9,26 @@ import {
 const prompt: RiskAssessmentPrompt = {
   systemInstructions: 'Trusted system instructions',
   userMessage: '{"repositoryData":{"bounded":true}}',
+  evidenceReferences: [
+    {
+      id: 'E1',
+      technicalTerm: 'processPayment',
+      location: {
+        pullRequestId: '1', filePath: 'src/a.ts',
+        range: { start: { line: 2, column: 1 }, end: { line: 2, column: 5 } },
+      },
+    },
+    {
+      id: 'E2',
+      technicalTerm: 'processPayment',
+      location: {
+        pullRequestId: '2', filePath: 'src/b.ts',
+        range: { start: { line: 8, column: 1 }, end: { line: 8, column: 5 } },
+      },
+    },
+  ],
+  pullRequestAId: '1',
+  pullRequestBId: '2',
 };
 
 function fakeClientReturning(message: unknown): {
@@ -30,10 +50,22 @@ describe('ClaudeRiskAnalysisProvider', () => {
         type: 'text',
         text: JSON.stringify({
         status: 'RISK_IDENTIFIED',
-        potentialIntegrationProblem: 'PR A changes the previous signature that PR B still relies on.',
+        likelyOutcome: 'The build may fail.',
+        pullRequestAId: '1',
+        pullRequestAContribution: 'PR A changes the previous signature.',
+        pullRequestARelevantEvidenceId: 'E1',
+        pullRequestBId: '2',
+        pullRequestBContribution: 'PR B still relies on the previous signature.',
+        pullRequestBRelevantEvidenceId: 'E2',
+        combinedEffect: 'The combined call may not satisfy the updated contract.',
         reviewerAction: 'Verify every combined caller.',
         confidence: 'HIGH',
         severity: 'MEDIUM',
+        couldBlockBuildTypeCheckOrDeployment: false,
+        couldCauseSevereFinancialSecurityOrDataImpact: false,
+        relationshipSummary: '',
+        independenceReason: '',
+        coverageLimitation: '',
         }),
       }],
     });
@@ -45,7 +77,14 @@ describe('ClaudeRiskAnalysisProvider', () => {
 
     await expect(provider.assess(prompt)).resolves.toEqual({
       status: 'RISK_IDENTIFIED',
-      potentialIntegrationProblem: 'PR A changes the previous signature that PR B still relies on.',
+      likelyOutcome: 'The build may fail.',
+      pullRequestAContribution: 'PR A changes the previous signature.',
+      pullRequestBContribution: 'PR B still relies on the previous signature.',
+      combinedEffect: 'The combined call may not satisfy the updated contract.',
+      relevantCode: {
+        pullRequestA: [{ pullRequestId: '1', technicalTerm: 'processPayment', filePath: 'src/a.ts', startLine: 2 }],
+        pullRequestB: [{ pullRequestId: '2', technicalTerm: 'processPayment', filePath: 'src/b.ts', startLine: 8 }],
+      },
       reviewerAction: 'Verify every combined caller.',
       confidence: 'HIGH',
       severity: 'MEDIUM',
@@ -69,7 +108,7 @@ describe('ClaudeRiskAnalysisProvider', () => {
     ['max_tokens', 'INCOMPLETE_OUTPUT'],
     ['model_context_window_exceeded', 'INCOMPLETE_OUTPUT'],
   ] as const)('fails explicitly for stop reason %s', async (stopReason, failureReason) => {
-    const { client } = fakeClientReturning({
+    const { client, create } = fakeClientReturning({
       stop_reason: stopReason,
       content: [{ type: 'text', text: 'Provider-generated non-schema stop message' }],
     });
@@ -78,6 +117,7 @@ describe('ClaudeRiskAnalysisProvider', () => {
     const assessment = provider.assess(prompt);
     await expect(assessment).rejects.toBeInstanceOf(ClaudeRiskAnalysisError);
     await expect(assessment).rejects.toMatchObject({ reason: failureReason });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ max_tokens: 2048 }));
   });
 
   it('fails explicitly when the SDK returns no structured-output text block', async () => {

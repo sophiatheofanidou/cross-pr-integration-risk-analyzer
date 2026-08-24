@@ -7,10 +7,21 @@
  */
 
 import type { RiskResult } from '../domain/risk-result.js';
+import type { SourceLocation } from '../domain/source-location.js';
+
+export interface RiskEvidenceReference {
+  readonly id: string;
+  readonly technicalTerm: string;
+  readonly location: SourceLocation;
+}
 
 export interface RiskAssessmentPrompt {
   readonly systemInstructions: string;
   readonly userMessage: string;
+  /** Deterministic allow-list used to resolve provider-selected evidence IDs. */
+  readonly evidenceReferences: readonly RiskEvidenceReference[];
+  readonly pullRequestAId: string;
+  readonly pullRequestBId: string;
 }
 
 export interface RiskAnalysisProvider {

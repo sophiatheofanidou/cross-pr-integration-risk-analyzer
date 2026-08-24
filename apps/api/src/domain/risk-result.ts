@@ -11,22 +11,35 @@ export type RiskConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type RiskSeverity = 'LOW' | 'MEDIUM' | 'HIGH';
 
-export const POTENTIAL_INTEGRATION_PROBLEM_MAX_LENGTH = 2000;
+export const LIKELY_OUTCOME_MAX_LENGTH = 160;
+export const PULL_REQUEST_CONTRIBUTION_MAX_LENGTH = 400;
+export const COMBINED_EFFECT_MAX_LENGTH = 800;
 export const REVIEWER_ACTION_MAX_LENGTH = 600;
-export const NO_RISK_EXPLANATION_MAX_LENGTH = 1200;
+export const NO_RISK_SECTION_MAX_LENGTH = 600;
+
+export interface RelevantCodeLocation {
+  readonly pullRequestId: string;
+  readonly technicalTerm: string;
+  readonly filePath: string;
+  readonly startLine: number;
+}
 
 export type RiskResult =
   | {
       readonly status: 'RISK_IDENTIFIED';
-      /**
-       * A short, self-contained reviewer-facing analysis (preferably 2-5
-       * sentences, maximum 2,000 characters) that explains how the two pull
-       * requests are technically connected, the incompatibility or risky
-       * interaction that may arise when combined, and the behavior or flow
-       * that may be affected if both are merged (docs/design/06-ai-risk-analysis.md,
-       * MVP Output).
-       */
-      readonly potentialIntegrationProblem: string;
+      /** Short, plain-language, reviewer-visible outcome if both pull requests are merged. */
+      readonly likelyOutcome: string;
+      /** What pull request A changes or assumes in the risky interaction. */
+      readonly pullRequestAContribution: string;
+      /** What pull request B changes or assumes in the risky interaction. */
+      readonly pullRequestBContribution: string;
+      /** Why the two individually plausible changes may become incompatible when combined. */
+      readonly combinedEffect: string;
+      /** Provider-selected locations, resolved and validated against deterministic evidence. */
+      readonly relevantCode: {
+        readonly pullRequestA: readonly RelevantCodeLocation[];
+        readonly pullRequestB: readonly RelevantCodeLocation[];
+      };
       /**
        * One concrete imperative review step (maximum 600 characters),
        * naming the relevant supplied file, symbol or data flow when the
@@ -38,10 +51,11 @@ export type RiskResult =
     }
   | {
       readonly status: 'NO_RISK_IDENTIFIED';
-      /**
-       * Why the deterministic relationship appears compatible or
-       * coincidental (maximum 1,200 characters).
-       */
-      readonly noRiskExplanation: string;
+      /** Why the deterministic matcher selected this pair. */
+      readonly relationshipSummary: string;
+      /** Why the supplied evidence indicates independence or compatibility. */
+      readonly independenceReason: string;
+      /** Material limitation on the bounded conclusion, when one exists. */
+      readonly coverageLimitation?: string;
       readonly confidence: RiskConfidence;
     };

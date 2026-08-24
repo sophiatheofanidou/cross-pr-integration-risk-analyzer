@@ -16,8 +16,14 @@ const analyzer = new TypeScriptStructuralAnalyzer();
 
 const riskIdentified: RiskResult = {
   status: 'RISK_IDENTIFIED',
-  potentialIntegrationProblem:
-    'PR A changes processPayment to require a currency argument, which PR B still calls without one.',
+  likelyOutcome: 'Payment processing may fail.',
+  pullRequestAContribution: 'PR A requires a currency argument.',
+  pullRequestBContribution: 'PR B still calls the previous signature.',
+  combinedEffect: 'The combined caller may not satisfy the updated processPayment contract.',
+  relevantCode: {
+    pullRequestA: [{ pullRequestId: '1', technicalTerm: 'processPayment', filePath: 'src/a.ts', startLine: 1 }],
+    pullRequestB: [{ pullRequestId: '2', technicalTerm: 'processPayment', filePath: 'src/b.ts', startLine: 1 }],
+  },
   reviewerAction: 'Verify every combined call supplies a supported currency.',
   confidence: 'HIGH',
   severity: 'MEDIUM',
@@ -25,7 +31,8 @@ const riskIdentified: RiskResult = {
 
 const noRiskIdentified: RiskResult = {
   status: 'NO_RISK_IDENTIFIED',
-  noRiskExplanation: 'The same name belongs to unrelated local functions.',
+  relationshipSummary: 'The same name appears in both pull requests.',
+  independenceReason: 'The supplied functions are local to separate modules.',
   confidence: 'HIGH',
 };
 
