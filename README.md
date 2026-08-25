@@ -1,5 +1,7 @@
 # Cross-PR Integration Risk Analyzer
 
+[![CI](https://github.com/sophiatheofanidou/cross-pr-integration-risk-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/sophiatheofanidou/cross-pr-integration-risk-analyzer/actions/workflows/ci.yml)
+
 An MVP that identifies integration risks between approved pull requests before they are merged, including risks that ordinary Git conflict detection cannot see.
 
 ## Repository Status
