@@ -71,7 +71,7 @@ Legend:
 - <img src="../assets/status-no.svg" width="18" height="18" alt="No"> **No** — the documented mechanism does not provide it.
 - <img src="../assets/status-unknown.svg" width="18" height="18" alt="Unknown"> **Unknown** — public documentation does not establish the answer.
 
-Capabilities in the **Proposed project — planned MVP** row describe the approved design, not functionality already implemented.
+Capabilities in the **Cross-PR Integration Risk Analyzer — TypeScript MVP** row describe the implemented portfolio MVP.
 
 | Solution | Discovers PR pairs | Deterministic selection | Pair analysis | AI reasoning | Merge/build/test execution | Reviewer explanation |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -98,11 +98,11 @@ Capabilities in the **Proposed project — planned MVP** row describe the approv
 | [ConflictLens](https://ksiresearch.org/seke/seke25paper/paper012.pdf) | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> |
 | [Crystal](https://homes.cs.washington.edu/~mernst/pubs/vc-conflicts-tse2013-abstract.html) and [WeCode](https://doi.org/10.1109/ICSE.2012.6227180) research | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-partial.svg" width="18" height="18" alt="Partial"> |
 | &nbsp; |  |  |  |  |  |  |
-| **Proposed project — planned MVP** | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
+| **Cross-PR Integration Risk Analyzer — TypeScript MVP** | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> | <img src="../assets/status-no.svg" width="18" height="18" alt="No"> | <img src="../assets/status-yes.svg" width="18" height="18" alt="Yes"> |
 
 Rows remain ordered by the categories in the Landscape Map. Blank rows separate the groups without adding another category column. `Partial` for merge queues means that they can expose the effect of a combination through grouping or failed checks; it does not mean that they perform semantic pair discovery. `Unknown` records missing public evidence rather than assuming absence.
 
-**Merge/build/test execution** means constructing or using a combined code state and running merge simulation, builds, tests or other executable checks against it. The planned MVP does not check out, merge or execute analyzed pull requests.
+**Merge/build/test execution** means constructing or using a combined code state and running merge simulation, builds, tests or other executable checks against it. The implemented MVP does not check out, merge or execute analyzed pull requests.
 
 ---
 

@@ -159,13 +159,15 @@ Each Candidate Pair with sufficient context receives one Claude assessment.
 The validated result contains:
 
 - `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
-- potential integration problem when a risk is identified,
-- no-risk explanation when no risk is identified,
+- a likely outcome, separate contribution from each pull request, combined effect and evidence-backed relevant code when a risk is identified,
+- a relationship summary, independence reason and optional material coverage limitation when no risk is identified,
 - confidence,
 - severity when a risk is identified,
-- concrete reviewer action when a risk is identified.
+- one concrete verification action when a risk is identified, without prescribing an implementation fix.
 
 The AI distinguishes deterministic evidence from semantic inference. It does not confirm defects or make merge decisions.
+
+The provider adapter uses a flat structured-output schema and a 2,048-token output limit. The application validates relevant-code references against deterministic evidence, promotes objectively severe build/type-check/deployment or financial/security/data impact, isolates provider failures per pair and assesses no more than four Candidate Pairs concurrently. Source-control PR enrichment and resulting-content preparation also use bounded four-worker pools, preserving deterministic output order while reducing network wall time.
 
 The MVP does not include a separate screening model.
 
@@ -193,23 +195,20 @@ Filtering, reviewer ownership views and advanced dashboards are deferred.
 
 ---
 
-## Controlled Scenarios
+## Controlled Demo
 
-Controlled TypeScript scenarios are developed together with Candidate Discovery rather than added only after implementation.
+The completed public demo uses eight open, approved pull requests created from the same base commit in the [Cross-PR Risk Demo Online Store](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store).
 
-The scenario set should include:
+The four selected Candidate Pairs demonstrate:
 
-- a changed function signature and a call in another changed file,
-- a behavioural change associated with an enclosing function and a matching use by another PR,
-- a changed model or property and a matching occurrence in another changed file,
-- a matching occurrence outside the other PR's patch,
-- a missing or insufficient provider patch recovered through bounded local diff reconstruction,
-- a coincidental same-name relationship that AI should reject,
-- unrelated PRs that should not become a Candidate Pair,
-- unsupported or incomplete input that produces a warning,
-- a discovered pair with insufficient context that does not invoke AI.
+- two independently valid contract changes that fail build/type-check when their intended pairs coexist,
+- one cents-to-euros semantic mismatch that still builds but can under-authorize payment,
+- one coincidental pair of module-local `formatReference` helpers that is correctly dismissed,
+- one unsupported HTML file that produces a visible coverage warning.
 
-These scenarios protect the product's core value and provide the final demonstration baseline.
+The run produced 8 eligible PRs, 28 possible pairs, 4 Candidate Pairs, 24 pairs filtered before Claude, 3 risks, 1 no-risk result, no unassessed Candidate Pairs and 1 warning. Detailed expected-versus-actual evidence and provider usage belong in `docs/demo-evaluation.md`, not in this specification.
+
+Automated controlled tests continue to cover additional boundaries such as resulting-content occurrences, provider-patch fallback, bounded local-diff reconstruction and insufficient-context handling.
 
 ---
 
@@ -244,12 +243,12 @@ The MVP is successful when it can demonstrate that:
 - a modified file with a missing or insufficient provider patch can still participate through bounded local diff reconstruction,
 - Claude identifies a designed integration-risk scenario that is not an ordinary Git conflict,
 - Claude dismisses a structurally related but semantically unrelated pair,
-- evidence, potential integration problems and reviewer actions are understandable in the UI,
+- deterministic evidence, risk explanations, no-risk reasoning and reviewer actions are understandable in the UI,
 - unsupported analysis is visible rather than silently ignored,
 - a completed analysis with no Candidate Pairs is presented as a valid result,
 - the complete workflow runs without repository-wide retrieval.
 
-The goal is a credible end-to-end workflow, not exhaustive accuracy or production scalability.
+The controlled demo has met these behavioural criteria. The result demonstrates a credible end-to-end workflow, not exhaustive accuracy or production scalability.
 
 ---
 
@@ -279,4 +278,4 @@ Investigate symbol resolution, repository indexes, semantic retrieval, RAG, agen
 
 ### Operational Evolution
 
-Add asynchronous analysis jobs, persistent run history, continuous monitoring and richer reviewer dashboards when the workflow moves beyond a local portfolio demonstration.
+Use the implemented opt-in metrics to establish per-run and per-request latency, model usage, input/output and cache tokens, outcomes and bounded failure categories. Metrics may produce one concise terminal summary, update the ignored self-contained `runtime/metrics/analysis-report.html`, or do both. The HTML preserves a comparison row for every run and provides expandable per-operation GitHub and per-pair Claude details. It estimates per-call and per-run cost only for a supported dated standard-pricing snapshot and labels that amount separately from provider billing. The metrics exclude credentials, repository URLs, complete prompts, provider payloads and source-code content. Add asynchronous jobs, richer history, remote dashboards, continuous monitoring or richer reviewer workflows only when real usage justifies them.

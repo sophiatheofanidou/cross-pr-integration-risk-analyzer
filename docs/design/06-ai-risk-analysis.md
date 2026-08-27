@@ -6,7 +6,7 @@ AI Risk Analysis evaluates each Candidate Pair using the context produced by Con
 
 Candidate Discovery establishes an objective structural relationship. AI Risk Analysis asks whether that relationship may represent a meaningful cross-PR integration risk:
 
-> Did one pull request change an assumption that the other pull request may still rely on?
+> Could the two supplied changes become incompatible or risky when combined?
 
 The result is advisory. The final decision remains with the reviewer.
 
@@ -87,8 +87,14 @@ The provider returns one validated structured result:
 ```text
 Risk Assessment
 ├── Status: RISK_IDENTIFIED | NO_RISK_IDENTIFIED
-├── Potential Integration Problem? (risk only)
-├── No-Risk Explanation? (no risk only)
+├── Likely Outcome? (risk only)
+├── Pull Request A Contribution? (risk only)
+├── Pull Request B Contribution? (risk only)
+├── Combined Effect? (risk only)
+├── Relevant Code? (risk only)
+├── Relationship Summary? (no risk only)
+├── Independence Reason? (no risk only)
+├── Coverage Limitation? (no risk only, when material)
 ├── Confidence: LOW | MEDIUM | HIGH
 ├── Severity: LOW | MEDIUM | HIGH ?
 └── Reviewer Action? (risk only)
@@ -96,16 +102,20 @@ Risk Assessment
 
 Rules:
 
-- `Potential Integration Problem`, `Severity` and `Reviewer Action` are required when a risk is identified.
-- `Potential Integration Problem` is limited to 2,000 characters and preferably 2–5 sentences. It briefly explains how both PRs are technically connected, the plausible incompatibility or risky combined behavior, and the affected behavior or flow. It does not need to claim that either PR changed an assumption.
+- `Likely Outcome`, both pull-request contributions, `Combined Effect`, `Relevant Code`, `Severity` and `Reviewer Action` are required when a risk is identified.
+- `Likely Outcome` is a short reviewer-facing summary. The two contribution fields explain what each actual pull request adds or changes, while `Combined Effect` explains the risky interaction without duplicating PR labels inside the text.
+- `Relevant Code` is selected by the provider but normalized against supplied deterministic evidence, including the correct pull-request ID, technical term, file and line.
 - `Reviewer Action` is limited to 600 characters and contains one concrete imperative review step grounded in the supplied file, symbol or data flow when the evidence supports it.
-- `No-Risk Explanation` is limited to 1,200 characters. It is required when no risk is identified and briefly explains why the deterministic relationship appears compatible or coincidental.
+- `Relationship Summary` explains why deterministic matching selected a no-risk pair. `Independence Reason` explains why the supplied bounded evidence appears compatible or coincidental. `Coverage Limitation` records a material warning or bounded-context limitation when one exists.
 - `Confidence` describes evidential support, not impact.
 - `Severity` describes potential impact if the risk is real.
+- deterministic post-validation promotes build/type-check/deployment blockers and severe financial, security or data impact to High severity;
 - non-critical analysis warnings may reduce confidence and must not disappear from the reviewer-facing result.
 - critical missing input prevents the provider call instead of producing `NO_RISK_IDENTIFIED`.
 
 Specific model names remain configuration choices.
+
+The Claude adapter uses a flat Anthropic-compatible output schema without a root union, `$defs` or `$ref`. It normalizes that provider-specific shape into the provider-neutral discriminated union above. The default output limit is 2,048 tokens, preventing the truncation observed with the earlier smaller limit. Provider failures retain safe request diagnostics and become pair-scoped `NOT_RUN/PROVIDER_FAILURE` results at the application boundary. At most four pair assessments execute concurrently; this bounds provider pressure and reduces total run time without changing individual request latency.
 
 ---
 
@@ -203,3 +213,5 @@ Future versions may also evaluate:
 - AI-request retries and more advanced failure recovery,
 - agentic repository investigation,
 - measured cost, latency and recall comparisons.
+
+The current implementation can emit opt-in metrics for each analysis run, source-control request and Claude request. Output modes are `console`, `file` or `both`. Console output produces one concise summary after the run rather than one raw line per request. File output maintains the ignored, self-contained `runtime/metrics/analysis-report.html`: a readable comparison table that preserves earlier runs and expandable GitHub/Claude request details for each run. The first HTML write imports any existing legacy CSV baseline. Metrics include total and stage latency, source-control request totals, every Claude call's pair and latency, model, token/cache usage, estimated standard-list-price cost, risk/no-risk counts, warnings and bounded failure information. They exclude API keys, repository URLs, complete prompts, provider payloads and source-code content. Cost is explicitly labelled as an estimate and tied to a dated model-pricing snapshot; unsupported models or caching modes display no estimate rather than applying an inaccurate rate.

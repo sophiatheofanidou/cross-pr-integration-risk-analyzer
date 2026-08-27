@@ -184,11 +184,33 @@ The first implementation prioritizes a complete, explainable and demonstrable wo
 
 **Status:** Accepted
 
-Each assessable Candidate Pair returns exactly one validated result. An identified risk contains a bounded `potentialIntegrationProblem`, one concrete `reviewerAction`, severity and confidence. A no-risk result contains a bounded `noRiskExplanation` and confidence.
+Each assessable Candidate Pair returns exactly one validated result. An identified risk separates a short `likelyOutcome`, each pull request's contribution, the `combinedEffect`, provider-selected relevant code validated against deterministic evidence, one concrete `reviewerAction`, severity and confidence. A no-risk result separates the deterministic `relationshipSummary`, the semantic `independenceReason`, an optional material `coverageLimitation` and confidence.
 
-The risk explanation must connect both pull requests, describe the plausible incompatibility or risky combined behavior and identify the potentially affected behavior or flow. It does not presume that either pull request necessarily changed an assumption. The reviewer action is imperative and grounded in supplied evidence when possible; it is not a remediation proposal.
+The risk explanation must connect both pull requests, attribute each contribution to the correct PR, describe the plausible incompatibility or risky combined behavior and identify the potentially affected behavior or flow. Contribution prose does not repeat the PR identifier because the UI renders that label separately. Quantitative claims avoid ambiguous "times less/more" language and use exact factors only when directly established by supplied evidence. The reviewer action is an imperative verification step grounded in supplied evidence when possible; it is not a remediation proposal. Deterministic post-validation promotes build/type-check/deployment blockers and severe financial, security or data impact to High severity.
 
 Provider failures are represented as assessment-not-run for only the affected pair, while pair-relevant context warnings remain visible. Unexpected internal failures still fail the request instead of being mislabeled as provider failures.
+
+---
+
+## ADR-018 — Anthropic-Compatible Structured Output and Bounded Concurrency
+
+**Status:** Accepted
+
+The Claude adapter uses one flat structured-output schema without a root union, `$defs` or `$ref`, then normalizes the validated provider shape into the provider-neutral result union. This reflects constraints observed in a real provider request rather than weakening the domain contract.
+
+The default output limit is 2,048 tokens because the earlier smaller limit produced incomplete structured output in the controlled walkthrough. Following measured local runs, the application now runs at most four pair assessments concurrently. Pull-request enrichment and resulting-content preparation use the same bounded worker count. This reduces total wall time while bounding provider pressure, preserving result order and avoiding duplicate in-flight content retrieval; it does not imply lower latency for each individual request.
+
+Safe provider diagnostics may retain request ID, error type and a bounded provider message. They must not expose credentials, complete prompts or source content.
+
+---
+
+## ADR-019 — Claude Opus 5 for the Recorded Demo
+
+**Status:** Accepted
+
+The AI-provider model remains runtime configuration and is not part of the domain contract. Claude Opus 5 is selected for the recorded controlled demo after repeated post-concurrency measurements produced the same three-risk/one-no-risk classification as Claude Sonnet 5, more concise outputs and lower observed total and Context Retrieval + AI Risk Assessment time. Its average estimated cost was approximately twice the Sonnet average, which remains an explicit tradeoff rather than evidence that Opus should be the default for every workload.
+
+These controlled measurements guide the portfolio demonstration only. They are not a production-scale model benchmark and do not change the provider-neutral architectural direction or the planned investigation of tiered AI analysis.
 
 ---
 
@@ -267,9 +289,11 @@ One future experiment is to use the Claude API to propose affected technical ter
 
 ## FUTURE-006 — Operational and Product Evolution
 
-**Status:** Planned investigation
+**Status:** Partially implemented
 
-Possible extensions include asynchronous jobs, persistent run history, continuous monitoring, richer reviewer filters, multiple providers and production deployment infrastructure.
+The first operational extension is implemented as opt-in metrics with `console`, `file` and `both` output modes. Console output emits one human-readable summary after a run. File output rewrites one ignored, self-contained `runtime/metrics/analysis-report.html`, preserving every earlier run in a comparison table and exposing expandable GitHub-operation and Claude-pair details. Existing legacy CSV data is imported on the first HTML write. Each run records total and stage latency, source-control request totals, every Claude call's Candidate Pair and latency, model, token/cache usage, risk/no-risk counts, warnings and bounded failure information. The metrics exclude API keys, repository URLs, complete prompts, provider payloads and source-code content. The HTML calculates estimated per-call and per-run cost from recorded usage and a dated standard-pricing snapshot for supported models. The report identifies the pricing basis and displays no estimate when a different billing mode cannot be priced reliably.
+
+Persistent dashboards or history should be introduced only if real repeated usage justifies them. Other possible extensions include asynchronous jobs, continuous monitoring, richer reviewer filters, multiple providers and production deployment infrastructure.
 
 ---
 

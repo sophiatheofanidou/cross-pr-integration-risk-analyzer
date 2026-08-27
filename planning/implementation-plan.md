@@ -32,17 +32,21 @@ Completed:
 - [x] `M1` initial domain contracts and test harness,
 - [x] `M2` GitHub integration and pull-request eligibility,
 - [x] `M3` controlled scenarios, structural Candidate Discovery and Context Retrieval,
-- [x] `M4` single Claude Risk Assessment.
+- [x] `M4` single Claude Risk Assessment,
+- [x] `M5` synchronous API, Angular reviewer UI and live provider integration,
+- [x] `M6` controlled demo implementation and live behavioural verification.
 
 Current checkpoint:
 
-- the simplified MVP design and execution plan are approved by the project owner,
-- `M3` is committed as `be419c6 feat: add TypeScript structural candidate discovery`, followed by the bounded AI code-search documentation commit `586c280`,
-- `M4` is committed as `caae004 feat: add Claude cross-PR risk assessment`,
-- the `M5A` backend operation is committed as `f6bcf4f feat: expose synchronous analysis API`,
-- the `M5B` Angular reviewer UI is committed as `0afd651 feat: add reviewer analysis dashboard`, followed by the key-free visual fixture commit `74b2337`,
-- `M5C` is complete: the production Angular/backend/GitHub path returned a valid live empty-scope report, and the real Claude provider returned a schema-validated structured result,
-- `M5` is complete; the next milestone is `M6 — Reproducible Demo and MVP Hardening`.
+- `M5` completed the synchronous API, Angular reviewer UI, key-free visual fixture and real provider integration,
+- `668f52a docs: define M6 demonstration plan` records the approved controlled scenario design,
+- `6b35997 fix: harden live risk assessment and evidence quality` records provider compatibility, output bounds, pair-scoped failures, concurrency, evidence attribution, severity and no-risk hardening,
+- `120ecf4 feat: improve reviewer-facing analysis results` records reviewer-oriented presentation and noisy standard-library term filtering,
+- the public demo repository contains eight open, approved pull requests from one base commit,
+- the live run produced 8 eligible PRs, 28 possible pairs, 4 Candidate Pairs, 24 pairs filtered before Claude, 3 risks, 1 no-risk result, no unassessed pairs and 1 warning,
+- repeated post-concurrency measurements record stage latency, model usage, tokens and estimated cost, with Claude Opus 5 selected for the recorded demo,
+- the current uncommitted checkpoint adds the final portfolio documentation, Opus screenshots, focused evaluation evidence and operational metrics; clean-install and fresh-clone verification pass locally,
+- the GitHub Actions workflow has been verified on GitHub, while the final uncommitted checkpoint still requires the project owner's review, commits and push followed by one final CI confirmation.
 
 M3 replaced the obsolete M1 evidence and context contracts with the current `TechnicalTermMatch`, `CandidatePair`, source-location and `AnalysisWarning` model.
 
@@ -218,8 +222,8 @@ Interpret each Candidate Pair with sufficient context through one structured Cla
 - do not invoke the provider for a Candidate Pair whose context failed the minimum-context check,
 - define one Zod-validated output schema,
 - return `RISK_IDENTIFIED` or `NO_RISK_IDENTIFIED`,
-- include a bounded no-risk explanation and confidence for compatible or coincidental pairs,
-- include a bounded potential integration problem, severity, confidence and concrete reviewer action for identified risks,
+- include separate bounded relationship, independence and optional coverage-limitation reasoning with confidence for compatible or coincidental pairs,
+- include a bounded likely outcome, each pull request's contribution, combined effect, relevant code, severity, confidence and concrete reviewer action for identified risks,
 - preserve analysis warnings,
 - use a fake provider in normal tests,
 - provide one opt-in real-provider smoke test.
@@ -312,7 +316,7 @@ fix: complete live provider integration
 
 ## M6 — Reproducible Demo and MVP Hardening
 
-**Status:** Planned — working model approved; implementation not started
+**Status:** Demo evidence and local verification complete; final owner review, commits and CI confirmation pending
 
 ### Goal
 
@@ -320,43 +324,29 @@ Demonstrate the product reliably with known cross-PR scenarios and clear setup d
 
 The demonstration must optimize for immediate reviewer comprehension as well as technical validity. A reader with no prior knowledge of the demo repository should be able to understand the designed integration risk from the PR titles, small diffs and displayed result without first studying the complete codebase.
 
-### Scenario-Design Gate
+### Completed Scope
 
-Before creating the external demo repository or changing production code, the next M6 session must inspect the existing visual fixture and controlled regression scenarios, then present the project owner with a complete proposed demonstration design covering:
+- created a separate public, runnable TypeScript online-store demo repository,
+- created eight manual scenario pull requests from the same base commit and kept them open and approved,
+- established separate controlled ground truth for two build/type-check failures, one semantic financial failure and one no-risk pair,
+- reproduced exactly four Candidate Pairs from 28 possible pairs and filtered the remaining 24 before Claude,
+- exposed one unsupported HTML file as a visible warning,
+- completed repeated bounded four-call live runs with three risk results, one no-risk result and no pair-level failures,
+- recorded readable per-run and per-call latency, token, cost and failure diagnostics without retaining prompts or source content,
+- compared observed Claude Sonnet 5 and Claude Opus 5 averages and selected Opus for the recorded demo,
+- captured the application overview, build-failure, semantic-risk, no-risk and complete-result views for the final documentation,
+- hardened the provider boundary and reviewer evidence only where the live walkthrough exposed concrete defects,
+- preserved the self-hosted, bring-your-own-key and human-review boundaries,
+- retained simulated operation and UI-only states in the key-free visual fixture.
 
-- one coherent, small and runnable TypeScript application domain rather than disconnected fixture files,
-- the proposed base repository structure and the purpose of its principal files,
-- the exact PR set, titles, changed files and intended pair relationships,
-- the expected possible-pair, Candidate-Pair, filtered-pair, warning and Claude-call counts,
-- the expected risk, no-risk and warning outcomes and why each should be immediately understandable,
-- which UI states remain covered by the key-free visual fixture instead of being forced artificially into the live repository,
-- the account, review and approval sequence,
-- the bounded evaluation and provider-cost plan.
+### Portfolio and Release Scope
 
-The project owner approves, rejects or revises that complete design before repository creation, pull-request creation, live provider calls or implementation edits begin.
-
-### Scope
-
-- create a separate public controlled GitHub demo repository with small TypeScript changes,
-- make the repository resemble a plausible application: internally coherent naming and workflows, compilable base and individual PR states, and only enough code to support credible scenarios,
-- make the central risk deliberately clear and consequential without relying on hidden domain knowledge, lengthy code reading or ambiguous model interpretation,
-- use a clearly disclosed secondary demo account to author the scenario pull requests and the project owner's primary account to review and approve them,
-- keep pull-request creation manual; do not add Claude Code or GitHub Actions automation merely to manufacture PR authorship,
-- cover at least four controlled behaviour categories in the end-to-end demonstration:
-  - a designed non-textual integration risk,
-  - a coincidental structural match,
-  - an unrelated pair filtered before Claude,
-  - unsupported or incomplete input that produces a visible warning,
-- determine the final number of PRs, Candidate Pairs and live runs from the approved scenario design; the four categories do not require exactly four PRs or four separate reports,
-- run the live demonstration locally with project-owner credentials that are never stored in either repository,
-- keep the public application repository self-hosted and bring-your-own-key, with required server-side environment variables and secret-handling guidance documented,
-- record a compact expected-versus-actual evaluation including Candidate-Pair outcome, assessment status, Claude-call count, model, token usage, latency and approximate cost,
-- summarize the evaluation in the portfolio README and keep detailed evidence in a focused demo document,
-- add a simple GitHub Actions CI workflow for install, build, type-check, normal tests and lint; never run the paid Claude smoke test automatically,
-- complete portfolio-oriented README presentation, screenshots and a short reproducible walkthrough,
-- verify fresh-clone setup and document visible limitations.
-
-Production changes are allowed only when the controlled walkthrough exposes a real defect or when a small change is required for reproducible setup. RAG, vector databases, agentic orchestration and unrelated post-MVP capabilities are not added to this project for portfolio keyword coverage.
+- add a secret-free GitHub Actions workflow for clean install, build, type-check, normal tests and lint,
+- present the problem, architecture, safety boundaries, controlled evidence and limitations in the root README,
+- keep detailed expected-versus-actual evidence and bounded provider metrics in `docs/demo-evaluation.md`,
+- update source-of-truth documents and external Learning Notes without duplicating their responsibilities,
+- complete local clean-install and fresh-clone verification,
+- verify GitHub-hosted CI after the project owner commits and pushes.
 
 ### Explicitly Deferred
 
@@ -377,10 +367,10 @@ Production changes are allowed only when the controlled walkthrough exposes a re
 - the primary README communicates the value, architecture, AI-safety choices and demonstrated outcomes without requiring readers to traverse the full design set,
 - the complete UI workflow is reproducible.
 
-### Planned Commit Points
+### Commit Points
 
 ```text
-docs: define M6 demonstration plan
+docs: define M6 demonstration plan              # 668f52a
 ci: add automated project verification
 docs: complete reproducible MVP demonstration
 ```
@@ -409,7 +399,7 @@ Add deleted and renamed file analysis, additional languages, richer symbol resol
 
 ## R5 — Richer Context and Operations
 
-Evaluate repository indexes, semantic retrieval, RAG, agentic investigation, asynchronous jobs, persistent run history, continuous monitoring and additional providers.
+Build on the implemented opt-in console and local HTML metrics for latency, input/output tokens, approximate cost, model, request ID, assessment status and bounded failure reason. The current metrics exclude API keys, repository URLs, complete prompts, provider payloads and source-code content. Evaluate repository indexes, semantic retrieval, RAG, agentic investigation, asynchronous jobs, persistent history, remote dashboards, continuous monitoring and additional providers only when measured use justifies them.
 
 ---
 
@@ -452,4 +442,4 @@ These exclusions control the first implementation only. The post-MVP roadmap pre
 
 # Immediate Next Step
 
-Begin M6 in a fresh session with the scenario-design gate: compare the existing mock/controlled coverage, propose the coherent demo application and complete PR/pair matrix, explain the expected immediately understandable outcomes and bounded call budget, and wait for project-owner approval before creating the external repository or changing code.
+Review the final README, screenshots and controlled demo evaluation as one portfolio presentation. Then let the project owner organize the completed implementation and documentation into coherent commits and push them. Confirm the GitHub Actions workflow on the final pushed commit; if it remains green, prepare the `v0.1.0` tag and release checkpoint.
