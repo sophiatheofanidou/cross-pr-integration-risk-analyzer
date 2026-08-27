@@ -10,6 +10,7 @@
  */
 
 import type { ChangedFile, FileChangeType, NormalizedPullRequest } from '../../domain/pull-request.js';
+import { mapWithConcurrency } from '../../shared/map-with-concurrency.js';
 import type {
   FileContentResult,
   RepositoryRef,
@@ -37,6 +38,7 @@ import {
 
 /** Files at or under this size (in bytes) may be returned as available text content. */
 export const DEFAULT_MAX_FILE_CONTENT_BYTES = 1_000_000;
+const GITHUB_PULL_REQUEST_CONCURRENCY = 4;
 
 const APPROVED_FILE_STATUS_MAP: Partial<Record<GitHubFileStatus, FileChangeType>> = {
   added: 'ADDED',
@@ -196,68 +198,70 @@ export class GitHubSourceControlProvider implements SourceControlProvider {
       'listPullRequests',
     );
 
-    const eligible: NormalizedPullRequest[] = [];
+    const normalized = await mapWithConcurrency(
+      summaries,
+      GITHUB_PULL_REQUEST_CONCURRENCY,
+      async (summary): Promise<NormalizedPullRequest | undefined> => {
+        if (summary.draft) {
+          return undefined;
+        }
 
-    for (const summary of summaries) {
-      if (summary.draft) {
-        continue;
-      }
+        const reviews = await this.client.listAllPages(
+          `/repos/${repoPath}/pulls/${summary.number}/reviews?per_page=100`,
+          reviewSchema,
+          'listReviews',
+        );
 
-      const reviews = await this.client.listAllPages(
-        `/repos/${repoPath}/pulls/${summary.number}/reviews?per_page=100`,
-        reviewSchema,
-        'listReviews',
-      );
+        const normalizedReviews: NormalizedReview[] = reviews.map((review) => ({
+          reviewerKey: review.user !== null ? `user:${review.user.id}` : `review:${review.id}`,
+          decision: review.state,
+        }));
 
-      const normalizedReviews: NormalizedReview[] = reviews.map((review) => ({
-        reviewerKey: review.user !== null ? `user:${review.user.id}` : `review:${review.id}`,
-        decision: review.state,
-      }));
+        const eligibilityResult = isEligiblePullRequest(
+          {
+            state: summary.state,
+            draft: summary.draft,
+            targetBranch: summary.base.ref,
+            reviews: normalizedReviews,
+          },
+          targetBranch,
+        );
 
-      const eligibilityResult = isEligiblePullRequest(
-        {
-          state: summary.state,
-          draft: summary.draft,
-          targetBranch: summary.base.ref,
-          reviews: normalizedReviews,
-        },
-        targetBranch,
-      );
+        if (!eligibilityResult) {
+          return undefined;
+        }
 
-      if (!eligibilityResult) {
-        continue;
-      }
+        // Three-dot compare (BASE...HEAD) using immutable commit SHAs, not
+        // branch names: its `merge_base_commit.sha` is the actual git
+        // merge-base of the two sides, which `summary.base.sha` is not
+        // guaranteed to be once the target branch has advanced.
+        const compare = await this.client.getValidatedResource(
+          `/repos/${repoPath}/compare/${encodeURIComponent(summary.base.sha)}...${encodeURIComponent(summary.head.sha)}`,
+          compareCommitsSchema,
+          'compareCommits',
+        );
 
-      // Three-dot compare (BASE...HEAD) using immutable commit SHAs, not
-      // branch names: its `merge_base_commit.sha` is the actual git
-      // merge-base of the two sides, which `summary.base.sha` is not
-      // guaranteed to be once the target branch has advanced.
-      const compare = await this.client.getValidatedResource(
-        `/repos/${repoPath}/compare/${encodeURIComponent(summary.base.sha)}...${encodeURIComponent(summary.head.sha)}`,
-        compareCommitsSchema,
-        'compareCommits',
-      );
+        const files = await this.client.listAllPages(
+          `/repos/${repoPath}/pulls/${summary.number}/files?per_page=100`,
+          changedFileSchema,
+          'listPullRequestFiles',
+        );
 
-      const files = await this.client.listAllPages(
-        `/repos/${repoPath}/pulls/${summary.number}/files?per_page=100`,
-        changedFileSchema,
-        'listPullRequestFiles',
-      );
+        if (files.length === GITHUB_MAX_PULL_REQUEST_FILES) {
+          throw new GitHubPullRequestFileLimitExceededError(summary.number);
+        }
 
-      if (files.length === GITHUB_MAX_PULL_REQUEST_FILES) {
-        throw new GitHubPullRequestFileLimitExceededError(summary.number);
-      }
-
-      eligible.push(
-        normalizePullRequest(
+        return normalizePullRequest(
           summary,
           compare.merge_base_commit.sha,
           files.map(normalizeChangedFile),
-        ),
-      );
-    }
+        );
+      },
+    );
 
-    return eligible;
+    return normalized.filter(
+      (pullRequest): pullRequest is NormalizedPullRequest => pullRequest !== undefined,
+    );
   }
 
   async getFileContent(

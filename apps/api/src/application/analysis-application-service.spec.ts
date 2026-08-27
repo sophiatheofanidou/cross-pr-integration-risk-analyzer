@@ -92,6 +92,36 @@ describe('runAnalysis', () => {
     });
   });
 
+  it('reports sanitized stage timings and final counts for a completed run', async () => {
+    const sourceControlProvider = new FakeSourceControlProvider();
+    sourceControlProvider.setEligiblePullRequests([]);
+    const riskAnalysisProvider = new FakeRiskAnalysisProvider([]);
+    const metrics: unknown[] = [];
+    const baseDependencies = dependencies(sourceControlProvider, riskAnalysisProvider);
+
+    await runAnalysis(
+      { repository, targetBranch: 'main' },
+      { ...baseDependencies, reportOperationalMetric: (metric) => metrics.push(metric) },
+    );
+
+    expect(metrics).toEqual([expect.objectContaining({
+      event: 'analysis_run',
+      outcome: 'COMPLETED',
+      durationMs: expect.any(Number),
+      eligiblePullRequestRetrievalMs: expect.any(Number),
+      candidateDiscoveryMs: expect.any(Number),
+      assessmentWallMs: expect.any(Number),
+      eligiblePullRequestCount: 0,
+      possiblePairCount: 0,
+      candidatePairCount: 0,
+      assessedPairCount: 0,
+      notAssessedCount: 0,
+      warningCount: 0,
+    })]);
+    expect(JSON.stringify(metrics)).not.toContain(repository.owner);
+    expect(JSON.stringify(metrics)).not.toContain(repository.repo);
+  });
+
   it('derives eligiblePullRequestCount and possiblePairCount from the eligible scope even with no Candidate Pairs', async () => {
     const sourceControlProvider = new FakeSourceControlProvider();
     sourceControlProvider.setFile('pr-a-head', 'src/a.ts', 'export function alpha() { return 1; }\n');
@@ -155,7 +185,7 @@ describe('runAnalysis', () => {
     expect(report.candidatePairs[0]!.technicalTermMatches.length).toBeGreaterThan(0);
   });
 
-  it('assesses at most two Candidate Pairs concurrently while preserving discovery order', async () => {
+  it('assesses at most four Candidate Pairs concurrently while preserving discovery order', async () => {
     const sourceControlProvider = new FakeSourceControlProvider();
     const pairInputs = [
       ['pr-a', 'src/a.ts', 'export function alpha() { return 1; }\n'],
@@ -164,6 +194,10 @@ describe('runAnalysis', () => {
       ['pr-d', 'src/d.ts', 'const betaResult = beta();\n'],
       ['pr-e', 'src/e.ts', 'export function gamma() { return 3; }\n'],
       ['pr-f', 'src/f.ts', 'const gammaResult = gamma();\n'],
+      ['pr-g', 'src/g.ts', 'export function delta() { return 4; }\n'],
+      ['pr-h', 'src/h.ts', 'const deltaResult = delta();\n'],
+      ['pr-i', 'src/i.ts', 'export function epsilon() { return 5; }\n'],
+      ['pr-j', 'src/j.ts', 'const epsilonResult = epsilon();\n'],
     ] as const;
     for (const [id, path, content] of pairInputs) {
       sourceControlProvider.setFile(`${id}-head`, path, content);
@@ -199,17 +233,17 @@ describe('runAnalysis', () => {
       dependencies(sourceControlProvider, provider),
     );
 
-    await waitFor(() => started === 2);
-    expect(maxActive).toBe(2);
+    await waitFor(() => started === 4);
+    expect(maxActive).toBe(4);
     releases.splice(0).forEach((release) => release());
 
-    await waitFor(() => started === 3);
-    expect(maxActive).toBe(2);
+    await waitFor(() => started === 5);
+    expect(maxActive).toBe(4);
     releases.splice(0).forEach((release) => release());
 
     const report = await reportPromise;
     expect(report.candidatePairs.map((pair) => `${pair.pullRequestA.id}-${pair.pullRequestB.id}`))
-      .toEqual(['pr-a-pr-b', 'pr-c-pr-d', 'pr-e-pr-f']);
+      .toEqual(['pr-a-pr-b', 'pr-c-pr-d', 'pr-e-pr-f', 'pr-g-pr-h', 'pr-i-pr-j']);
   });
 
   it('reports a Candidate Pair without sufficient context as NOT_RUN/INSUFFICIENT_CONTEXT', async () => {

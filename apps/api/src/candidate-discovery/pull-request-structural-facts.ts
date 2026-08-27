@@ -10,10 +10,13 @@
 
 import type { AnalysisWarning } from '../domain/analysis-warning.js';
 import type { NormalizedPullRequest } from '../domain/pull-request.js';
+import { mapWithConcurrency } from '../shared/map-with-concurrency.js';
 import type { RepositoryRef, SourceControlProvider } from '../source-control/source-control-provider.js';
 import type { StructuralAnalyzer } from '../structural-analysis/structural-analyzer.js';
 import type { ContentCache, PreparedFileFacts } from './prepare-changed-file.js';
 import { prepareChangedFile } from './prepare-changed-file.js';
+
+const CONTENT_PREPARATION_CONCURRENCY = 4;
 
 export interface PullRequestStructuralFacts {
   readonly pullRequest: NormalizedPullRequest;
@@ -37,29 +40,40 @@ export async function prepareAllStructuralFacts(
   readonly warnings: readonly AnalysisWarning[];
 }> {
   const contentCache: ContentCache = new Map();
+  const preparedPullRequests = await mapWithConcurrency(
+    pullRequests,
+    CONTENT_PREPARATION_CONCURRENCY,
+    async (pullRequest) => {
+      const files: PreparedFileFacts[] = [];
+      const warnings: AnalysisWarning[] = [];
+
+      for (const changedFile of pullRequest.changedFiles) {
+        const result = await prepareChangedFile(
+          pullRequest,
+          changedFile,
+          repository,
+          sourceControlProvider,
+          analyzer,
+          contentCache,
+        );
+        if (result.kind === 'PREPARED') {
+          files.push(result.facts);
+        } else {
+          warnings.push(result.warning);
+        }
+      }
+      return { pullRequest, files, warnings };
+    },
+  );
+
   const factsByPullRequestId = new Map<string, PullRequestStructuralFacts>();
   const warnings: AnalysisWarning[] = [];
-
-  for (const pullRequest of pullRequests) {
-    const files: PreparedFileFacts[] = [];
-
-    for (const changedFile of pullRequest.changedFiles) {
-      const result = await prepareChangedFile(
-        pullRequest,
-        changedFile,
-        repository,
-        sourceControlProvider,
-        analyzer,
-        contentCache,
-      );
-      if (result.kind === 'PREPARED') {
-        files.push(result.facts);
-      } else {
-        warnings.push(result.warning);
-      }
-    }
-
-    factsByPullRequestId.set(pullRequest.id, { pullRequest, files });
+  for (const prepared of preparedPullRequests) {
+    factsByPullRequestId.set(prepared.pullRequest.id, {
+      pullRequest: prepared.pullRequest,
+      files: prepared.files,
+    });
+    warnings.push(...prepared.warnings);
   }
 
   return { factsByPullRequestId, warnings };

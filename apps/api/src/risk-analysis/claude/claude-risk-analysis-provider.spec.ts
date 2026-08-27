@@ -43,6 +43,68 @@ function fakeClientReturning(message: unknown): {
 }
 
 describe('ClaudeRiskAnalysisProvider', () => {
+  it('reports sanitized latency and provider usage for a completed assessment', async () => {
+    const metrics: unknown[] = [];
+    const { client } = fakeClientReturning({
+      _request_id: 'req_metrics_test',
+      stop_reason: 'end_turn',
+      usage: {
+        input_tokens: 1200,
+        output_tokens: 240,
+        cache_creation_input_tokens: 1000,
+        cache_read_input_tokens: 200,
+      },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          status: 'NO_RISK_IDENTIFIED',
+          likelyOutcome: '',
+          pullRequestAId: '',
+          pullRequestAContribution: '',
+          pullRequestARelevantEvidenceId: '',
+          pullRequestBId: '',
+          pullRequestBContribution: '',
+          pullRequestBRelevantEvidenceId: '',
+          combinedEffect: '',
+          reviewerAction: '',
+          confidence: 'HIGH',
+          severity: 'LOW',
+          couldBlockBuildTypeCheckOrDeployment: false,
+          couldCauseSevereFinancialSecurityOrDataImpact: false,
+          relationshipSummary: 'The supplied pair shares a technical term.',
+          independenceReason: 'The bounded contexts are independent.',
+          coverageLimitation: '',
+        }),
+      }],
+    });
+    const provider = new ClaudeRiskAnalysisProvider({
+      model: 'test-model',
+      client,
+      reportOperationalMetric: (metric) => metrics.push(metric),
+    });
+
+    await provider.assess(prompt);
+
+    expect(metrics).toEqual([expect.objectContaining({
+      event: 'ai_provider_request',
+      provider: 'claude',
+      pullRequestAId: '1',
+      pullRequestBId: '2',
+      model: 'test-model',
+      maxTokens: 2048,
+      outcome: 'COMPLETED',
+      requestId: 'req_metrics_test',
+      stopReason: 'end_turn',
+      inputTokens: 1200,
+      outputTokens: 240,
+      cacheCreationInputTokens: 1000,
+      cacheReadInputTokens: 200,
+      durationMs: expect.any(Number),
+    })]);
+    expect(JSON.stringify(metrics)).not.toContain(prompt.systemInstructions);
+    expect(JSON.stringify(metrics)).not.toContain(prompt.userMessage);
+  });
+
   it('sends separated system/user content with structured output and normalizes the result', async () => {
     const { client, create } = fakeClientReturning({
       stop_reason: 'end_turn',
@@ -133,16 +195,27 @@ describe('ClaudeRiskAnalysisProvider', () => {
   });
 
   it('wraps parsing or validation failures without exposing a raw provider payload', async () => {
+    const metrics: unknown[] = [];
     const { client } = fakeClientReturning({
       stop_reason: 'end_turn',
       content: [{ type: 'text', text: 'malformed JSON body contents' }],
     });
-    const provider = new ClaudeRiskAnalysisProvider({ model: 'test-model', client });
+    const provider = new ClaudeRiskAnalysisProvider({
+      model: 'test-model',
+      client,
+      reportOperationalMetric: (metric) => metrics.push(metric),
+    });
 
     await expect(provider.assess(prompt)).rejects.toMatchObject({
       reason: 'INVALID_OUTPUT',
       message: 'Claude structured output could not be parsed or validated',
     });
+    expect(metrics).toEqual([expect.objectContaining({
+      outcome: 'FAILED',
+      failureReason: 'INVALID_OUTPUT',
+      failureDetail: 'JSON_PARSE: structured-output text was not valid JSON',
+    })]);
+    expect(JSON.stringify(metrics)).not.toContain('malformed JSON body contents');
   });
 
   it('rejects missing model configuration before making a request', () => {

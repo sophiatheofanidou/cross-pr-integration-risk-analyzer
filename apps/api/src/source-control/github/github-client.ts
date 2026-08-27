@@ -12,6 +12,11 @@
  */
 
 import type { z } from 'zod';
+import {
+  elapsedMilliseconds,
+  emitOperationalMetric,
+  type OperationalMetricReporter,
+} from '../../shared/operational-metrics.js';
 import { GITHUB_API_VERSION } from './github-response-schemas.js';
 
 export const DEFAULT_GITHUB_API_BASE_URL = 'https://api.github.com';
@@ -68,6 +73,8 @@ export interface GitHubClientConfig {
   readonly fetchImpl?: typeof fetch;
   /** Defaults to the current GitHub REST API version this adapter targets. */
   readonly apiVersion?: string;
+  /** Optional sanitized metrics sink; disabled in production unless explicitly configured. */
+  readonly reportOperationalMetric?: OperationalMetricReporter;
 }
 
 function formatZodError(error: z.ZodError): string {
@@ -95,6 +102,7 @@ export class GitHubClient {
   private readonly token: string | undefined;
   private readonly fetchImpl: typeof fetch;
   private readonly apiVersion: string;
+  private readonly reportOperationalMetric: OperationalMetricReporter | undefined;
 
   constructor(config: GitHubClientConfig = {}) {
     this.baseUrl = config.baseUrl ?? DEFAULT_GITHUB_API_BASE_URL;
@@ -102,6 +110,31 @@ export class GitHubClient {
     this.token = config.token;
     this.fetchImpl = config.fetchImpl ?? fetch;
     this.apiVersion = config.apiVersion ?? GITHUB_API_VERSION;
+    this.reportOperationalMetric = config.reportOperationalMetric;
+  }
+
+  private async fetchResponse(url: string, operation: string): Promise<Response> {
+    const startedAt = performance.now();
+    try {
+      const response = await this.fetchImpl(url, { headers: this.buildHeaders() });
+      emitOperationalMetric(this.reportOperationalMetric, {
+        event: 'github_request',
+        operation,
+        durationMs: elapsedMilliseconds(startedAt),
+        outcome: 'COMPLETED',
+        httpStatus: response.status,
+      });
+      return response;
+    } catch (error) {
+      emitOperationalMetric(this.reportOperationalMetric, {
+        event: 'github_request',
+        operation,
+        durationMs: elapsedMilliseconds(startedAt),
+        outcome: 'NETWORK_FAILURE',
+        errorName: error instanceof Error ? error.name : 'UnknownNetworkError',
+      });
+      throw error;
+    }
   }
 
   private buildHeaders(): Record<string, string> {
@@ -156,9 +189,7 @@ export class GitHubClient {
       }
       seenUrls.add(url);
 
-      const response: Response = await this.fetchImpl(url, {
-        headers: this.buildHeaders(),
-      });
+      const response = await this.fetchResponse(url, operation);
       if (!response.ok) {
         throw new GitHubHttpError(operation, response.status, url);
       }
@@ -205,7 +236,7 @@ export class GitHubClient {
     operation: string,
   ): Promise<T> {
     const url = this.resolveUrl(path);
-    const response = await this.fetchImpl(url, { headers: this.buildHeaders() });
+    const response = await this.fetchResponse(url, operation);
     if (!response.ok) {
       throw new GitHubHttpError(operation, response.status, url);
     }
@@ -229,7 +260,7 @@ export class GitHubClient {
     operation: string,
   ): Promise<{ readonly status: number; readonly body: unknown }> {
     const url = this.resolveUrl(path);
-    const response = await this.fetchImpl(url, { headers: this.buildHeaders() });
+    const response = await this.fetchResponse(url, operation);
 
     if (response.status === 404) {
       return { status: 404, body: undefined };

@@ -28,6 +28,13 @@ import {
   RiskAnalysisProviderInvocationError,
 } from '../risk-analysis/risk-assessment.js';
 import type { RiskAnalysisProvider } from '../risk-analysis/risk-analysis-provider.js';
+import {
+  elapsedMilliseconds,
+  emitOperationalMetric,
+  withOperationalMetricContext,
+  type OperationalMetricReporter,
+} from '../shared/operational-metrics.js';
+import { mapWithConcurrency } from '../shared/map-with-concurrency.js';
 import type { RepositoryRef, SourceControlProvider } from '../source-control/source-control-provider.js';
 import type { StructuralAnalyzer } from '../structural-analysis/structural-analyzer.js';
 import type {
@@ -59,6 +66,7 @@ export interface AnalysisDependencies {
   readonly riskAnalysisProvider: RiskAnalysisProvider;
   readonly contextRetrievalBounds?: ContextRetrievalBounds;
   readonly reportProviderFailure?: (diagnostic: ProviderFailureDiagnostic) => void;
+  readonly reportOperationalMetric?: OperationalMetricReporter;
 }
 
 function optionalProperty(error: unknown, property: string): unknown {
@@ -139,7 +147,7 @@ function deduplicateWarnings(warnings: readonly AnalysisWarning[]): AnalysisWarn
 const INSUFFICIENT_CONTEXT_MESSAGE =
   'Risk assessment was not run for this Candidate Pair because no Technical Term Match retained sufficient context.';
 const PROVIDER_FAILURE_MESSAGE = 'Risk assessment failed for this Candidate Pair and was not completed.';
-const ASSESSMENT_CONCURRENCY = 2;
+const ASSESSMENT_CONCURRENCY = 4;
 
 /**
  * Builds the report entry for one Candidate Pair. A provider failure is
@@ -206,9 +214,10 @@ async function buildCandidatePairReport(
  * the same eligible-PR, Candidate-Pair and assessment collections the report
  * returns.
  */
-export async function runAnalysis(
+async function executeAnalysis(
   request: AnalysisRequest,
   dependencies: AnalysisDependencies,
+  runStartedAt: number,
 ): Promise<AnalysisReportDto> {
   const {
     sourceControlProvider,
@@ -216,18 +225,23 @@ export async function runAnalysis(
     riskAnalysisProvider,
     contextRetrievalBounds,
     reportProviderFailure,
+    reportOperationalMetric,
   } = dependencies;
 
+  const eligibleRetrievalStartedAt = performance.now();
   const eligiblePullRequests = await sourceControlProvider.getEligiblePullRequests(
     request.repository,
     request.targetBranch,
   );
+  const eligiblePullRequestRetrievalMs = elapsedMilliseconds(eligibleRetrievalStartedAt);
+  const candidateDiscoveryStartedAt = performance.now();
   const run = await discoverCandidates(
     eligiblePullRequests,
     request.repository,
     sourceControlProvider,
     structuralAnalyzer,
   );
+  const candidateDiscoveryMs = elapsedMilliseconds(candidateDiscoveryStartedAt);
 
   const candidatePairReports: CandidatePairReportDto[] = [];
   const allWarnings: AnalysisWarning[] = [...run.result.warnings];
@@ -236,42 +250,41 @@ export async function runAnalysis(
   let noRiskIdentifiedCount = 0;
   let notAssessedCount = 0;
 
-  for (let start = 0; start < run.result.candidatePairs.length; start += ASSESSMENT_CONCURRENCY) {
-    const batch = run.result.candidatePairs.slice(start, start + ASSESSMENT_CONCURRENCY);
-    const batchResults = await Promise.all(
-      batch.map((candidatePair) =>
-        buildCandidatePairReport(
-          candidatePair,
-          run,
-          riskAnalysisProvider,
-          contextRetrievalBounds,
-          reportProviderFailure,
-        ),
-      ),
-    );
+  const assessmentStartedAt = performance.now();
+  const assessmentResults = await mapWithConcurrency(
+    run.result.candidatePairs,
+    ASSESSMENT_CONCURRENCY,
+    (candidatePair) => buildCandidatePairReport(
+      candidatePair,
+      run,
+      riskAnalysisProvider,
+      contextRetrievalBounds,
+      reportProviderFailure,
+    ),
+  );
 
-    for (const { report, warnings } of batchResults) {
-      candidatePairReports.push(report);
-      allWarnings.push(...warnings);
+  for (const { report, warnings } of assessmentResults) {
+    candidatePairReports.push(report);
+    allWarnings.push(...warnings);
 
-      if (report.assessment.state === 'COMPLETED') {
-        if (report.assessment.result.status === 'RISK_IDENTIFIED') {
-          riskIdentifiedCount++;
-        } else {
-          noRiskIdentifiedCount++;
-        }
+    if (report.assessment.state === 'COMPLETED') {
+      if (report.assessment.result.status === 'RISK_IDENTIFIED') {
+        riskIdentifiedCount++;
       } else {
-        notAssessedCount++;
+        noRiskIdentifiedCount++;
       }
+    } else {
+      notAssessedCount++;
     }
   }
+  const assessmentWallMs = elapsedMilliseconds(assessmentStartedAt);
 
   const warnings = deduplicateWarnings(allWarnings);
   const eligiblePullRequestCount = eligiblePullRequests.length;
   const possiblePairCount =
     eligiblePullRequestCount < 2 ? 0 : (eligiblePullRequestCount * (eligiblePullRequestCount - 1)) / 2;
 
-  return {
+  const report: AnalysisReportDto = {
     repositoryUrl: `https://github.com/${request.repository.owner}/${request.repository.repo}`,
     targetBranch: request.targetBranch,
     status: warnings.length > 0 ? 'COMPLETED_WITH_WARNINGS' : 'COMPLETED',
@@ -295,4 +308,43 @@ export async function runAnalysis(
     candidatePairs: candidatePairReports,
     warnings,
   };
+
+  emitOperationalMetric(reportOperationalMetric, {
+    event: 'analysis_run',
+    outcome: 'COMPLETED',
+    durationMs: elapsedMilliseconds(runStartedAt),
+    eligiblePullRequestRetrievalMs,
+    candidateDiscoveryMs,
+    assessmentWallMs,
+    eligiblePullRequestCount,
+    possiblePairCount,
+    candidatePairCount: run.result.candidatePairs.length,
+    assessedPairCount: riskIdentifiedCount + noRiskIdentifiedCount,
+    riskIdentifiedCount,
+    noRiskIdentifiedCount,
+    notAssessedCount,
+    warningCount: warnings.length,
+  });
+
+  return report;
+}
+
+export async function runAnalysis(
+  request: AnalysisRequest,
+  dependencies: AnalysisDependencies,
+): Promise<AnalysisReportDto> {
+  return withOperationalMetricContext(async () => {
+    const runStartedAt = performance.now();
+    try {
+      return await executeAnalysis(request, dependencies, runStartedAt);
+    } catch (error) {
+      emitOperationalMetric(dependencies.reportOperationalMetric, {
+        event: 'analysis_run',
+        outcome: 'FAILED',
+        durationMs: elapsedMilliseconds(runStartedAt),
+        errorName: error instanceof Error ? error.name : 'UnknownAnalysisError',
+      });
+      throw error;
+    }
+  });
 }

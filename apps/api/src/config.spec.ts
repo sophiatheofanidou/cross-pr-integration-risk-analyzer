@@ -16,6 +16,7 @@ describe('loadConfig', () => {
       anthropicApiKey: 'anthropic-key',
       claudeModel: 'claude-test-model',
       port: 3000,
+      analysisMetrics: 'off',
     });
   });
 
@@ -23,6 +24,14 @@ describe('loadConfig', () => {
     const config = loadConfig({ ...validEnv, PORT: '4100' });
 
     expect(config.port).toBe(4100);
+  });
+
+  it.each(['console', 'file', 'both'] as const)('enables %s metrics only when explicitly configured', (mode) => {
+    expect(loadConfig({ ...validEnv, ANALYSIS_METRICS: mode }).analysisMetrics).toBe(mode);
+  });
+
+  it('rejects an unknown metrics mode', () => {
+    expect(() => loadConfig({ ...validEnv, ANALYSIS_METRICS: 'verbose' })).toThrow(/analysisMetrics/);
   });
 
   it('throws a descriptive error, naming only the missing variable, when GITHUB_TOKEN is missing', () => {

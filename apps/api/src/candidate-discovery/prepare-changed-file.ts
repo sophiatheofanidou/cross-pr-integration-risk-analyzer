@@ -61,7 +61,7 @@ function skip(
 }
 
 /** Run-scoped cache of retrieved content, keyed by repository, revision and path. */
-export type ContentCache = Map<string, FileContentResult>;
+export type ContentCache = Map<string, Promise<FileContentResult>>;
 
 function contentCacheKey(repository: RepositoryRef, revision: string, path: string): string {
   return `${repository.owner}/${repository.repo}@${revision}::${path}`;
@@ -79,9 +79,16 @@ async function getCachedFileContent(
   if (cached !== undefined) {
     return cached;
   }
-  const result = await sourceControlProvider.getFileContent(repository, path, revision);
-  contentCache.set(key, result);
-  return result;
+  const pending = sourceControlProvider.getFileContent(repository, path, revision);
+  contentCache.set(key, pending);
+  try {
+    return await pending;
+  } catch (error) {
+    if (contentCache.get(key) === pending) {
+      contentCache.delete(key);
+    }
+    throw error;
+  }
 }
 
 export async function prepareChangedFile(

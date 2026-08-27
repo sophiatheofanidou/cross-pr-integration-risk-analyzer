@@ -12,6 +12,7 @@ const configSchema = z.object({
   anthropicApiKey: z.string().min(1, 'ANTHROPIC_API_KEY must not be empty'),
   claudeModel: z.string().min(1, 'ANTHROPIC_MODEL must not be empty'),
   port: z.coerce.number().int().positive().default(DEFAULT_PORT),
+  analysisMetrics: z.enum(['off', 'console', 'file', 'both']).default('off'),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
@@ -27,6 +28,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     anthropicApiKey: env['ANTHROPIC_API_KEY'],
     claudeModel: env['ANTHROPIC_MODEL'],
     port: env['PORT'],
+    analysisMetrics: env['ANALYSIS_METRICS'],
   });
 
   if (!parsed.success) {

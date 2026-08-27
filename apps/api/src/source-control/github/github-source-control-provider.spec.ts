@@ -272,6 +272,57 @@ describe('GitHubSourceControlProvider.getFileContent', () => {
 });
 
 describe('GitHubSourceControlProvider.getEligiblePullRequests (adapter integration boundary)', () => {
+  it('enriches at most four pull requests concurrently and preserves repository order', async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const summaries = Array.from({ length: 6 }, (_, index) => {
+      const number = index + 1;
+      return {
+        number,
+        title: `PR ${number}`,
+        html_url: `https://github.com/o/r/pull/${number}`,
+        state: 'open',
+        draft: false,
+        head: { ref: `feature/${number}`, sha: `head-${number}` },
+        base: { ref: 'main', sha: 'base' },
+      };
+    });
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith('/pulls?state=open&base=main&per_page=100')) {
+        return jsonResponse(summaries);
+      }
+      active++;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise<void>((resolve) => setTimeout(resolve, 5));
+      active--;
+
+      const number = Number(url.match(/(?:pulls\/|head-)(\d+)/)?.[1]);
+      if (url.includes('/reviews?')) {
+        return jsonResponse([{
+          id: number,
+          user: { id: number, login: `reviewer-${number}` },
+          state: 'APPROVED',
+          submitted_at: '2026-01-01T00:00:00Z',
+          commit_id: `head-${number}`,
+        }]);
+      }
+      if (url.includes('/compare/')) {
+        return jsonResponse({ status: 'ahead', merge_base_commit: { sha: `merge-base-${number}` } });
+      }
+      if (url.includes('/files?')) {
+        return jsonResponse([]);
+      }
+      throw new Error(`unexpected request in test: ${url}`);
+    });
+
+    const provider = new GitHubSourceControlProvider({ client: { fetchImpl } });
+    const result = await provider.getEligiblePullRequests({ owner: 'o', repo: 'r' }, 'main');
+
+    expect(maximumActive).toBe(4);
+    expect(result.map((pullRequest) => pullRequest.id)).toEqual(['1', '2', '3', '4', '5', '6']);
+  });
+
   it('retrieves paginated PRs, applies review-based eligibility, fetches files only for eligible PRs and returns normalized output', async () => {
     const calls: string[] = [];
 

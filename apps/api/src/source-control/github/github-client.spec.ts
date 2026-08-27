@@ -24,6 +24,49 @@ function jsonResponse(
 }
 
 describe('GitHubClient.listAllPages', () => {
+  it('reports sanitized timing and status for each HTTP request', async () => {
+    const metrics: unknown[] = [];
+    const fetchImpl = vi.fn(async () => jsonResponse([{ id: 1 }]));
+    const client = new GitHubClient({
+      fetchImpl,
+      token: 'must-not-appear',
+      reportOperationalMetric: (metric) => metrics.push(metric),
+    });
+
+    await client.listAllPages('/repos/private/repository/pulls', itemSchema, 'listPullRequests');
+
+    expect(metrics).toEqual([expect.objectContaining({
+      event: 'github_request',
+      operation: 'listPullRequests',
+      outcome: 'COMPLETED',
+      httpStatus: 200,
+      durationMs: expect.any(Number),
+    })]);
+    expect(JSON.stringify(metrics)).not.toContain('must-not-appear');
+    expect(JSON.stringify(metrics)).not.toContain('/repos/private/repository');
+  });
+
+  it('reports a bounded network failure without logging the failing URL', async () => {
+    const metrics: unknown[] = [];
+    const fetchImpl = vi.fn(async () => { throw new TypeError('secret network details'); });
+    const client = new GitHubClient({
+      fetchImpl,
+      reportOperationalMetric: (metric) => metrics.push(metric),
+    });
+
+    await expect(
+      client.listAllPages('/repos/private/repository/pulls', itemSchema, 'listPullRequests'),
+    ).rejects.toThrow(TypeError);
+    expect(metrics).toEqual([expect.objectContaining({
+      event: 'github_request',
+      operation: 'listPullRequests',
+      outcome: 'NETWORK_FAILURE',
+      errorName: 'TypeError',
+    })]);
+    expect(JSON.stringify(metrics)).not.toContain('secret network details');
+    expect(JSON.stringify(metrics)).not.toContain('/repos/private/repository');
+  });
+
   it('returns the items of a single page when no Link header is present', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse([{ id: 1 }, { id: 2 }]));
     const client = new GitHubClient({ fetchImpl });

@@ -3,6 +3,7 @@ dist/
 coverage/
 .angular/
 .cache/
+/runtime/metrics/
 
 .env
 .env.*
