@@ -296,19 +296,39 @@ describe('RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS content requirements', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('attached to the exact pull-request ID');
   });
 
-  it('requires conditional language, forbids confirmed-defect claims, and keeps remediation out of risk explanations', () => {
+  it('requires conditional language and keeps remediation out of every reviewer-facing field', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('conditional language');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('must not include remediation or fix instructions');
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('belong only in reviewerAction');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('not prescribe a code change');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('not prescribe a code change, propose a replacement implementation, or list possible fixes');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('understandable to a reviewer who has not read the repository');
   });
 
   it('requires reviewerAction to be one concrete imperative step naming the relevant supplied evidence', () => {
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('reviewerAction');
     expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain(
-      'one concrete imperative review step',
+      'one concrete imperative verification step',
     );
-    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('relevant supplied symbol or data flow');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('what to verify before merge');
+  });
+
+  it('keeps pull-request labels out of contribution prose because the UI renders them', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain(
+      'renders the pull-request label separately',
+    );
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain(
+      'Never begin with or repeat labels such as "PR 6", "PR #6", "pull request 6"',
+    );
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain(
+      'start directly with the changed symbol, behavior, contract, or assumption',
+    );
+  });
+
+  it('forbids ambiguous or unsupported quantitative phrasing', () => {
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('Never use mathematically ambiguous multiplier language');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('"N times less"');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('only when the supplied evidence establishes it directly and unambiguously');
+    expect(RISK_ASSESSMENT_SYSTEM_INSTRUCTIONS).toContain('without invented precision');
   });
 
   it('requires selecting only validated deterministic evidence IDs for each pull request', () => {

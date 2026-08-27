@@ -41,7 +41,7 @@ export const claudeRiskResultSchema = z
         'The exact supplied pull-request ID described by pullRequestAContribution',
       ),
     pullRequestAContribution: conditionalText(PULL_REQUEST_CONTRIBUTION_MAX_LENGTH).describe(
-        'One or two concise sentences describing only the change or assumption associated with pullRequestAId',
+        'One or two concise sentences describing only the change or assumption associated with pullRequestAId, without repeating the pull-request ID or label',
       ),
     pullRequestARelevantEvidenceId: conditionalText(40).describe(
         'The single supplied deterministic evidence ID most useful for reviewing pullRequestAContribution',
@@ -50,7 +50,7 @@ export const claudeRiskResultSchema = z
         'The exact supplied pull-request ID described by pullRequestBContribution',
       ),
     pullRequestBContribution: conditionalText(PULL_REQUEST_CONTRIBUTION_MAX_LENGTH).describe(
-        'One or two concise sentences describing only the change or assumption associated with pullRequestBId',
+        'One or two concise sentences describing only the change or assumption associated with pullRequestBId, without repeating the pull-request ID or label',
       ),
     pullRequestBRelevantEvidenceId: conditionalText(40).describe(
         'The single supplied deterministic evidence ID most useful for reviewing pullRequestBContribution',
@@ -59,7 +59,7 @@ export const claudeRiskResultSchema = z
         'One or two concise sentences explaining why the two changes may become incompatible and what happens when combined',
       ),
     reviewerAction: conditionalText(REVIEWER_ACTION_MAX_LENGTH).describe(
-        'One concrete imperative review step, naming the relevant supplied file, symbol or data flow when the evidence supports it',
+        'One concrete imperative verification step before merge; identify what to check without prescribing a code change or implementation fix',
       ),
     confidence: confidenceSchema,
     severity: severitySchema,
