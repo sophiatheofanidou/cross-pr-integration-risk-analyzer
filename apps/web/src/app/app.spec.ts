@@ -79,7 +79,10 @@ describe('App', () => {
     expect(fakeApi.calls).toEqual([{ repositoryUrl: 'https://github.com/acme/payments-platform', targetBranch: 'development' }]);
     const status = fixture.debugElement.query(By.css('[role="status"]'));
     expect(status).not.toBeNull();
+    expect(status.nativeElement.textContent).toContain('Integration risk analysis in progress');
     expect(status.nativeElement.textContent).toContain('Analyzing approved pull requests');
+    expect(status.nativeElement.textContent).toContain('assessing how their changes may interact');
+    expect(status.nativeElement.textContent).not.toContain('Candidate Discovery in progress');
 
     const progress = fixture.debugElement.query(By.css('[role="progressbar"]'));
     expect(progress).not.toBeNull();
