@@ -188,13 +188,9 @@ export function normalizeClaudeRiskResult(
         }
       }
 
-      const fallback = evidenceReferences.find(
-        (reference) => reference.location.pullRequestId === expectedPullRequestId,
+      throw new Error(
+        `Claude output does not reference resolvable deterministic evidence for pull request ${expectedPullRequestId}`,
       );
-      if (fallback === undefined) {
-        throw new Error(`No deterministic evidence exists for pull request ${expectedPullRequestId}`);
-      }
-      return fallback;
     };
     const toLocation = (reference: RiskEvidenceReference) => {
       return {

@@ -119,7 +119,7 @@ describe('claudeRiskResultSchema', () => {
     }
   });
 
-  it('falls back deterministically when Claude invents an evidence ID', () => {
+  it('repairs an invented evidence ID using the companion contribution term', () => {
     const parsed = claudeRiskResultSchema.parse({
       ...validRiskOutput(),
       pullRequestARelevantEvidenceId: 'INVENTED',
@@ -131,6 +131,36 @@ describe('claudeRiskResultSchema', () => {
       expect(result.relevantCode.pullRequestA[0]?.technicalTerm).toBe('processPayment');
       expect(result.relevantCode.pullRequestA[0]?.pullRequestId).toBe('1');
     }
+  });
+
+  it('rejects non-repairable evidence IDs instead of substituting unrelated same-PR evidence', () => {
+    const multiTermEvidenceReferences: readonly RiskEvidenceReference[] = [
+      ...evidenceReferences,
+      {
+        id: 'E3',
+        technicalTerm: 'PaymentRequest',
+        location: {
+          pullRequestId: '1', filePath: 'src/request.ts',
+          range: { start: { line: 4, column: 1 }, end: { line: 4, column: 8 } },
+        },
+      },
+      {
+        id: 'E4',
+        technicalTerm: 'PaymentRequest',
+        location: {
+          pullRequestId: '2', filePath: 'src/consumer.ts',
+          range: { start: { line: 12, column: 1 }, end: { line: 12, column: 8 } },
+        },
+      },
+    ];
+    const parsed = claudeRiskResultSchema.parse({
+      ...validRiskOutput(),
+      pullRequestARelevantEvidenceId: 'INVENTED_A',
+      pullRequestBRelevantEvidenceId: 'INVENTED_B',
+    });
+
+    expect(() => normalizeClaudeRiskResult(parsed, multiTermEvidenceReferences, '1', '2'))
+      .toThrow('Claude output does not reference resolvable deterministic evidence for pull request 1');
   });
 
   it('validates a no-risk result with empty risk-only fields', () => {
