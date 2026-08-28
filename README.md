@@ -20,7 +20,7 @@ The Cross-PR Integration Risk Analyzer helps reviewers find which approved pull-
 
 The primary users are code reviewers, senior engineers, and tech leads working with several concurrently approved changes against the same branch. The tool supports their judgment; it does not make merge decisions for them.
 
-Read the [Project Vision](docs/design/00-project-vision.md) and [Problem Analysis](docs/design/01-problem-analysis.md) for the full product motivation and scope.
+For deeper product background, see the [Project Vision](docs/design/00-project-vision.md) and [Problem Analysis](docs/design/01-problem-analysis.md).
 
 ## Why this workflow is needed
 
@@ -32,7 +32,7 @@ Existing tools address adjacent parts of the problem:
 
 This project focuses on the discovery gap between independently reviewed changes. Its value is not merely asking an AI model to compare two changes that a person has already selected. It systematically identifies which pairs deserve joint investigation, applies semantic reasoning only where deterministic evidence justifies it, and reports what the reviewer should inspect.
 
-The broader positioning and comparison with adjacent tools are documented in the [Current Solution Landscape](docs/design/03-current-solution-landscape.md).
+The [Current Solution Landscape](docs/design/03-current-solution-landscape.md) provides an optional research and positioning deep dive across adjacent tools.
 
 ## How the analyzer works
 
@@ -49,7 +49,7 @@ The initial filtering is deterministic and repeatable: it decides which pairs de
 
 <p align="center"><em>The reviewer workspace keeps the full analysis scope visible: eight eligible pull requests produce 28 possible pairs, deterministic Candidate Discovery retains four for assessment, and unsupported input remains explicit.</em></p>
 
-See [Architecture](docs/design/02-architecture.md), [Candidate Discovery](docs/design/04-candidate-discovery.md), [Context Retrieval](docs/design/05-context-retrieval.md), and [AI Risk Analysis](docs/design/06-ai-risk-analysis.md) for the detailed boundaries and tradeoffs.
+For a technical review, start with [Architecture](docs/design/02-architecture.md), then follow the implemented pipeline through [Candidate Discovery](docs/design/04-candidate-discovery.md), [Context Retrieval](docs/design/05-context-retrieval.md), and [AI Risk Analysis](docs/design/06-ai-risk-analysis.md).
 
 ## Controlled Demo Evaluation
 
@@ -88,7 +88,7 @@ The opt-in local performance report preserves comparable runs without storing cr
 
 <p align="center"><em>Four recorded runs compare pipeline timing and AI usage for the same controlled workload. The Opus runs completed faster with shorter outputs, while the Sonnet runs had approximately half the estimated cost.</em></p>
 
-## Safety and trust boundaries
+## Safety boundaries
 
 The analyzer supports human review without taking repository decisions or actions. It does not:
 
@@ -97,9 +97,17 @@ The analyzer supports human review without taking repository decisions or action
 - send the complete repository to the AI provider;
 - treat a structural match as a confirmed risk or missing context as a no-risk result.
 
-External data is validated at provider boundaries, assessment failures remain isolated to the affected pair, and credentials stay server-side and outside Git.
+HTTP requests and structured responses from source-control and AI providers are validated when they enter the application. Provider credentials are loaded by the backend from environment variables, are never sent to the browser, and remain outside Git.
 
-The complete release boundary is defined in the [MVP Specification](docs/design/07-mvp-specification.md), with major decisions recorded in the [Design Log](docs/design/08-design-log.md).
+## AI assessment safeguards
+
+**Prompt integrity.** The system prompt explicitly treats retrieved source code, comments, strings, diffs, pull-request metadata and warnings as untrusted evidence rather than instructions. Repository-provided text is kept in the user message and is not interpolated into the trusted system instructions.
+
+**Grounded evidence.** The model must select relevant code from a closed set of evidence IDs created from deterministic source locations; it cannot supply authoritative file paths or line numbers freely. The application maps the selected IDs back to the original evidence, validates their pull-request ownership, and requires conditional language for conclusions that remain semantic inference.
+
+**Visible uncertainty and failures.** Critical missing context prevents the provider call instead of producing a no-risk result. If one AI-provider assessment fails or returns invalid output, the failure remains attached to that Candidate Pair as an explicit assessment-not-run outcome; other completed findings remain available.
+
+These controls reduce prompt-injection, hallucination and provider-failure risk; they do not guarantee that an AI assessment is correct.
 
 ## Current MVP implementation
 
@@ -112,6 +120,10 @@ apps/
 ├── api/    Node.js and TypeScript analysis backend
 └── web/    Angular reviewer interface
 ```
+
+The backend exposes one synchronous `POST /api/analysis` operation. The Angular application calls it through a local development proxy and renders the analysis inventory, warnings, Candidate Pairs and reviewer-facing Risk Results.
+
+The complete implemented `v0.1.0` release boundary is defined in the [MVP Specification](docs/design/07-mvp-specification.md). Major architectural decisions, superseded alternatives, planned improvements, and open questions are recorded in the [Design Log](docs/design/08-design-log.md).
 
 Key technologies:
 
@@ -142,6 +154,16 @@ npm run type-check
 npm test
 npm run lint
 ```
+
+### Explore the reviewer interface without credentials
+
+Run the development-only visual fixture from the repository root:
+
+```text
+npm run demo
+```
+
+Open `http://127.0.0.1:4200/` when Angular is ready. This mode uses explicit simulated fixture data for repeatable UI inspection, does not call source-control or AI providers, and is not evidence of live analysis accuracy. The controlled evaluation above records the real end-to-end workflow.
 
 ### Run the live application
 
@@ -196,4 +218,6 @@ Planned directions include:
 
 The long-term architectural direction is provider-neutral and multi-language, while the current implemented release remains explicit and honest about its GitHub, TypeScript, and Claude scope.
 
-The current milestone state and verification history are maintained in the [Implementation Plan](planning/implementation-plan.md).
+## License
+
+This project is licensed under the [MIT License](LICENSE).

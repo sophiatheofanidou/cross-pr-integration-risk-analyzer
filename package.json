@@ -2,6 +2,7 @@
   "name": "cross-pr-integration-risk-analyzer",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "engines": {
     "node": ">=24.15.0 <25.0.0"
   },

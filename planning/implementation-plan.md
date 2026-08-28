@@ -371,27 +371,7 @@ docs: complete reproducible MVP demonstration
 
 # Planned Post-MVP Roadmap
 
-These improvements remain part of the product direction. They are implemented only after the first workflow provides measurements and real usage evidence.
-
-## R1 — Tiered AI Analysis
-
-Add cheap screening plus detailed escalation when Candidate Pair volume makes one full assessment per candidate too expensive. Measure cost savings and false dismissals before making screening a hard filter.
-
-## R2 — SQLite Result Cache
-
-Add durable cache entries keyed by PR revisions, retrieved context and analysis configuration. Keep the cache behind a replaceable interface. If R1 exists, cache screening and detailed results independently where useful.
-
-## R3 — Provider Prompt Caching
-
-Enable provider prompt caching for stable repeated prompt prefixes when supported and when token/cost measurements demonstrate value.
-
-## R4 — Broader Candidate Coverage
-
-Add deleted and renamed file analysis, additional languages, richer symbol resolution and a lexical fallback only if benchmarks justify it.
-
-## R5 — Richer Context and Operations
-
-Build on the implemented opt-in console and local HTML metrics for latency, input/output tokens, approximate cost, model, request ID, assessment status and bounded failure reason. The current metrics exclude API keys, repository URLs, complete prompts, provider payloads and source-code content. Evaluate repository indexes, semantic retrieval, RAG, agentic investigation, asynchronous jobs, persistent history, remote dashboards, continuous monitoring and additional providers only when measured use justifies them.
+The canonical roadmap and the measurements required to justify post-MVP work are maintained under [Planned Post-MVP Improvements](../docs/design/08-design-log.md#planned-post-mvp-improvements) in the Design Log. This implementation plan preserves completed milestone and verification history without duplicating those future proposals.
 
 ---
 

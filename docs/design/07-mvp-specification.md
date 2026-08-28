@@ -254,28 +254,4 @@ The controlled demo has met these behavioural criteria. The result demonstrates 
 
 ## Planned Future Improvements
 
-The following ideas remain part of the intended evolution of the project. They are deferred, not rejected.
-
-### Tiered AI Analysis
-
-Add a cheaper screening model before detailed analysis when measured Candidate Pair volume shows that one full assessment per pair is too expensive.
-
-### SQLite Result Caching
-
-Persist validated results across application runs so unchanged PR revisions and unchanged retrieved context do not repeat paid AI calls.
-
-### Provider Prompt Caching
-
-Reuse stable prompt prefixes when the selected provider supports caching and measurements show repeated input with meaningful cost.
-
-### Broader Candidate Coverage
-
-Add deleted and renamed file analysis, more structural languages and possibly a measured lexical fallback.
-
-### Richer Context and Analysis
-
-Investigate symbol resolution, repository indexes, semantic retrieval, RAG, agentic exploration, multiple findings per pair and additional providers.
-
-### Operational Evolution
-
-Use the implemented opt-in metrics to establish per-run and per-request latency, model usage, input/output and cache tokens, outcomes and bounded failure categories. Metrics may produce one concise terminal summary, update the ignored self-contained `runtime/metrics/analysis-report.html`, or do both. The HTML preserves a comparison row for every run and provides expandable per-operation GitHub and per-pair Claude details. It estimates per-call and per-run cost only for a supported dated standard-pricing snapshot and labels that amount separately from provider billing. The metrics exclude credentials, repository URLs, complete prompts, provider payloads and source-code content. Add asynchronous jobs, richer history, remote dashboards, continuous monitoring or richer reviewer workflows only when real usage justifies them.
+The intended evolution of the project remains deferred rather than rejected. The canonical roadmap and its evidence gates are maintained under [Planned Post-MVP Improvements](08-design-log.md#planned-post-mvp-improvements) in the Design Log; this specification remains the source of truth for the implemented `v0.1.0` boundary.

@@ -80,6 +80,16 @@ The tool reports plausible risks, not confirmed defects.
 
 ---
 
+## Prompt Integrity and Evidence Grounding
+
+The system prompt treats pull-request metadata, source code, comments, strings, diffs, Technical Term Matches and warnings as untrusted repository-provided data. These values are JSON-encoded in the user message and never interpolated into the trusted system instructions. Instructions embedded in repository content therefore remain evidence to analyze rather than directions for the model to follow.
+
+Each deterministic source location supplied to the model receives an evidence ID. The provider may select only those closed-set IDs for its pull-request contributions and may not invent an ID, file path or line number. The application then normalizes the selection against the original evidence before producing the provider-neutral Risk Result.
+
+The prompt also requires conditional language for unconfirmed defects and prohibits ambiguous multiplier phrases or unsupported numerical precision. These controls reduce prompt-injection and hallucination risk; they do not turn semantic inference into deterministic proof, so the final result remains advisory.
+
+---
+
 ## MVP Output
 
 The provider returns one validated structured result:
@@ -145,73 +155,6 @@ The MVP does not need additional infrastructure to demonstrate cost-aware reason
 
 ---
 
-## Future Improvement: Tiered AI Analysis
-
-Tiered analysis remains an intentional evolution path.
-
-A future version may add:
-
-```text
-Candidate Pair
-      ↓
-Cheap Screening
-      ├── Dismiss
-      └── Escalate
-              ↓
-       Detailed Analysis
-```
-
-This should be introduced when measurements show that:
-
-- Candidate Discovery still produces enough pairs to make one full assessment per pair expensive,
-- a cheaper model can dismiss obvious false positives without unacceptable recall loss,
-- and the additional prompts, schemas and orchestration are justified.
-
-Uncertain or materially incomplete cases should be escalated rather than dismissed.
-
----
-
-## Future Improvement: SQLite Result Caching
-
-Persistent application-level result caching also remains an intentional future improvement.
-
-A SQLite cache may store validated assessment results using a key derived from:
-
-- both immutable pull-request revisions,
-- the retrieved context,
-- prompt and output-schema versions,
-- relevant model configuration.
-
-A valid cache hit can avoid a paid AI call across separate application runs. SQLite is appropriate for a local portfolio deployment because it provides durable storage without separate database infrastructure.
-
-It should be added when repeated analyses of unchanged PR pairs become part of the demonstrated workflow. The cache remains behind a replaceable interface and does not change the Risk Assessment contract.
-
-If tiered analysis is later introduced, screening and detailed results may be cached independently.
-
----
-
-## Future Improvement: Provider Prompt Caching
-
-Prompt caching is distinct from SQLite result caching.
-
-- Result caching avoids the AI request entirely when the complete analysis is unchanged.
-- Provider prompt caching reduces input processing cost when a new request still needs to be made but contains stable repeated content.
-
-Prompt caching may be enabled when the chosen provider supports it and measurements show useful repeated prompt prefixes, such as stable instructions or one pull request reused across several pair analyses.
-
-It remains provider-specific optimization and must not leak into the provider-neutral Risk Assessment contract.
-
----
-
-## Other Future Improvements
-
-Future versions may also evaluate:
-
-- multiple AI providers,
-- richer prompt strategies,
-- multiple findings per pair,
-- AI-request retries and more advanced failure recovery,
-- agentic repository investigation,
-- measured cost, latency and recall comparisons.
+## Operational Metrics
 
 The current implementation can emit opt-in metrics for each analysis run, source-control request and Claude request. Output modes are `console`, `file` or `both`. Console output produces one concise summary after the run rather than one raw line per request. File output maintains the ignored, self-contained `runtime/metrics/analysis-report.html`: a readable comparison table that preserves earlier runs and expandable GitHub/Claude request details for each run. The first HTML write imports any existing legacy CSV baseline. Metrics include total and stage latency, source-control request totals, every Claude call's pair and latency, model, token/cache usage, estimated standard-list-price cost, risk/no-risk counts, warnings and bounded failure information. They exclude API keys, repository URLs, complete prompts, provider payloads and source-code content. Cost is explicitly labelled as an estimate and tied to a dated model-pricing snapshot; unsupported models or caching modes display no estimate rather than applying an inaccurate rate.
