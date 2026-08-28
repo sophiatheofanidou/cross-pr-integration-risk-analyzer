@@ -36,16 +36,12 @@ The broader positioning and comparison with adjacent tools are documented in the
 
 ## How the analyzer works
 
-1. **Retrieve the review scope.** The analyzer retrieves the open, non-draft, actively approved pull requests targeting the selected branch from the configured source-control platform.
-2. **Generate the complete pair set.** Every unordered combination of eligible pull requests is considered once.
-3. **Discover Candidate Pairs deterministically.** A language-aware structural analyzer produces explainable evidence when a technical term associated with a changed region in one PR also occurs structurally in a changed file from another PR.
-4. **Retrieve focused context.** Only the relevant change hunks, bounded source snippets, evidence locations, PR metadata, and warnings are prepared for assessment.
-5. **Assess the selected pairs.** A structured AI Risk Assessment evaluates each Candidate Pair with sufficient context, distinguishing a plausible risk from a compatible or coincidental structural relationship.
-6. **Support reviewer judgment.** The reviewer interface presents risk-first results, the contribution of each PR, the possible combined effect, relevant code locations, confidence, severity, reviewer actions, no-risk reasoning, and coverage warnings.
+1. **Collect the review scope.** Retrieve the approved pull requests targeting the selected branch.
+2. **Find the pairs worth investigating.** Compare the changes and retain combinations connected by a concrete structural code relationship.
+3. **Analyze only relevant context.** For each shortlisted pair, prepare the related changes and source locations and use focused AI reasoning to assess their combined effect.
+4. **Explain the result.** Show what each PR contributes, the likely outcome if both are merged, the supporting code locations, and what the reviewer should verify.
 
-**What deterministic evidence means.** This is a reproducible source-code relationship found without AI judgment. For example, one PR may change code associated with a function name while the same name appears as a structural call or reference in a file changed by another PR. The analyzer records the term and the exact file and source locations that produced the match. Given the same PR revisions and source content, this stage produces the same evidence; it does not claim that the two occurrences are the same semantic symbol or that a risk already exists.
-
-**Why this controls AI cost.** Pairs without deterministic evidence are filtered before the AI stage and cause no model call. For each retained Candidate Pair, Context Retrieval selects only the relevant change hunks, evidence locations, and bounded source snippets. The complete repository is never sent to the AI provider. This reduces the number of paid requests, limits input tokens and cost, and keeps every assessment focused on the evidence that caused the pair to be selected.
+The initial filtering is deterministic and repeatable: it decides which pairs deserve deeper investigation, not whether a risk already exists. Unrelated pairs cause no AI call, and the complete repository is never sent to the AI provider.
 
 <p align="center">
   <img src="docs/assets/application-overview.png" alt="Application overview showing the controlled analysis totals and visible coverage warning">
@@ -55,22 +51,22 @@ The broader positioning and comparison with adjacent tools are documented in the
 
 See [Architecture](docs/design/02-architecture.md), [Candidate Discovery](docs/design/04-candidate-discovery.md), [Context Retrieval](docs/design/05-context-retrieval.md), and [AI Risk Analysis](docs/design/06-ai-risk-analysis.md) for the detailed boundaries and tradeoffs.
 
-## How the MVP was validated
+## Controlled Demo Evaluation
 
-To test the end-to-end behaviour against known ground truth, the current MVP was evaluated with a small public [controlled demo repository](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store). It contains eight open, approved pull requests created from the same base commit. Each PR is valid independently, while selected combinations deliberately represent three known integration risks and one structurally related no-risk control.
-
-The important result is not simply that the analyzer produced four findings. From 28 possible PR pairs, deterministic Candidate Discovery selected exactly the four designed technically related pairs and filtered the remaining 24 before any AI assessment. The AI Risk Assessment then identified all three known risks and correctly dismissed the deliberately coincidental match.
-
-The scenarios establish different capabilities:
+The minimum viable product (MVP) was evaluated against known ground truth in a public [controlled demo repository](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store): eight independently valid, approved PRs created from the same base commit. From 28 possible pairs, deterministic Candidate Discovery retained the four designed technical relationships and filtered 24 before AI. The AI Risk Assessment identified all three known risks and correctly dismissed the no-risk control.
 
 | Controlled scenario | Ground truth | Analyzer outcome |
 |---|---|---|
-| A function contract changes from positional parameters to a request object while another PR adds a caller using the previous contract | The combined code fails compilation/type-checking | Contract risk identified with High severity |
-| A function changes from a synchronous return value to an asynchronous result while another PR consumes it synchronously | The combined code fails compilation/type-checking | Control-flow and return-contract risk identified with High severity |
-| A numeric return value changes business unit while another PR continues to interpret it using the previous unit | The combined code still builds but produces materially incorrect runtime behaviour | Semantic data-unit risk identified with High severity |
-| Separate modules contain unrelated local helpers with the same name | The pair builds and behaves correctly | Coincidental structural match correctly dismissed |
+| Function signature changes while another PR adds a caller using the previous contract | Build/type-check failure | High-risk contract mismatch identified |
+| A synchronous function becomes asynchronous while another PR consumes its result synchronously | Build/type-check failure | High-risk return-contract mismatch identified |
+| A numeric result changes unit while another PR still assumes the previous unit | Type-correct but materially incorrect runtime behaviour | High-risk semantic mismatch identified |
+| Separate modules contain unrelated local helpers with the same name | No integration problem | Coincidental match correctly dismissed |
 
-An unsupported file type in the final scenario also produced an explicit coverage warning. This matters because unsupported input remained visible instead of being silently treated as evidence that no relationship existed.
+An unsupported file type also produced an explicit coverage warning instead of being silently treated as negative evidence.
+
+### Representative semantic risk
+
+The strongest controlled scenario is a semantic data-unit mismatch that remains type-correct. One pull request changes an order total from cents to euros while another passes the value to payment authorization under the earlier cents assumption. The analyzer connects both changes, explains that their combination could authorize one hundredth of the intended amount, and identifies the contract a reviewer should verify.
 
 <p align="center">
   <img src="docs/assets/semantic-risk-result.png" alt="Semantic integration risk showing a cents-versus-euros contract mismatch, combined effect, reviewer action, and supporting source locations">
@@ -78,21 +74,30 @@ An unsupported file type in the final scenario also produced an explicit coverag
 
 <p align="center"><em>A semantic data-unit mismatch can remain type-correct while producing materially incorrect runtime behaviour. The result connects both changes, explains their combined effect, and identifies the contract a reviewer should verify.</em></p>
 
-This controlled result demonstrates the end-to-end workflow and cost-aware filtering; it is not a claim of production-scale precision or recall. The detailed PR matrix, expected-versus-actual evidence, provider usage, and evaluation limitations belong in the [Controlled Demo Evaluation](docs/demo-evaluation.md).
+The complete expected-versus-actual evidence, result captures, evaluation findings, and limitations are documented in the [Controlled Demo Evaluation](docs/demo-evaluation.md).
+
+## Operational Performance
+
+After the workflow was behaviourally validated, opt-in metrics were used to measure the live pipeline and refine the final implementation and recorded model choice.
+
+The opt-in local performance report preserves comparable runs without storing credentials, repository URLs, prompts, provider payloads, or source-code content. It separates end-to-end and pipeline-stage latency, records AI calls and token usage, estimates cost from a dated pricing configuration, and keeps operational failures visible. The report remains separate from the reviewer workspace so product findings and performance evidence do not compete for attention.
+
+<p align="center">
+  <img src="docs/assets/analysis-performance-report.png" alt="Analysis Performance Report comparing four recorded runs by stage latency, AI usage, failures, and estimated cost">
+</p>
+
+<p align="center"><em>Four recorded runs compare pipeline timing and AI usage for the same controlled workload. The Opus runs completed faster with shorter outputs, while the Sonnet runs had approximately half the estimated cost.</em></p>
 
 ## Safety and trust boundaries
 
-The analyzer is an advisory, human-in-the-loop tool. It does not:
+The analyzer supports human review without taking repository decisions or actions. It does not:
 
-- approve, reject, or merge pull requests;
-- establish textual mergeability;
-- check out or construct combined PR states;
-- execute builds or tests for the analyzed PR combinations;
+- approve, reject, merge, or establish textual mergeability;
+- check out, build, or test combined PR states;
 - send the complete repository to the AI provider;
-- treat a structural name match as proof of a semantic dependency;
-- convert missing critical context into a no-risk conclusion.
+- treat a structural match as a confirmed risk or missing context as a no-risk result.
 
-Source-control and AI-provider data are validated at their external boundaries. Provider failures are isolated to the affected Candidate Pair, while unexpected internal failures remain operation-level errors. Required credentials stay server-side and are never included in the frontend or committed to Git.
+External data is validated at provider boundaries, assessment failures remain isolated to the affected pair, and credentials stay server-side and outside Git.
 
 The complete release boundary is defined in the [MVP Specification](docs/design/07-mvp-specification.md), with major decisions recorded in the [Design Log](docs/design/08-design-log.md).
 
@@ -121,12 +126,14 @@ Key technologies:
 
 ## Run locally
 
+The MVP is self-hosted and uses a bring-your-own-key model: the person running it supplies the source-control and AI-provider credentials used by the backend.
+
 Requirements:
 
 - Node.js `>=24.15.0 <25.0.0`
 - npm `11.17.0`
 
-Install the exact locked dependency graph and verify both workspaces:
+Install and verify both workspaces:
 
 ```text
 npm ci
@@ -136,17 +143,15 @@ npm test
 npm run lint
 ```
 
-On Windows PowerShell, use `npm.cmd` in place of `npm` if the execution policy blocks `npm.ps1`.
-
 ### Run the live application
 
-The backend requires these environment variables in the shell that starts it:
+The backend requires these environment variables:
 
 - `GITHUB_TOKEN` — a GitHub token that can read the analyzed repository;
 - `ANTHROPIC_API_KEY` — an Anthropic API key;
 - `ANTHROPIC_MODEL` — the Claude model ID used for assessment.
 
-Keep credentials out of source files, command history, frontend configuration, and Git.
+Keep credentials out of source files, frontend configuration, and Git.
 
 Build and start the backend from the repository root:
 
@@ -163,7 +168,7 @@ npm run start --workspace web
 
 Open `http://127.0.0.1:4200/`. The Angular development proxy sends relative `/api` requests to the backend at `http://127.0.0.1:3000`.
 
-The real-provider smoke test is opt-in and may incur Anthropic charges. Normal tests exclude it. Run it only with explicit intent and the required environment variables:
+The optional real-provider smoke test may incur Anthropic charges and is excluded from normal tests:
 
 ```text
 npm run test:claude-smoke --workspace @cross-pr-risk-analyzer/api
@@ -171,33 +176,23 @@ npm run test:claude-smoke --workspace @cross-pr-risk-analyzer/api
 
 ## Tests and CI
 
-Normal verification covers GitHub response validation and eligibility, pair generation, Candidate Discovery, bounded diff reconstruction, Context Retrieval, Claude output normalization, pair-scoped failure handling, the synchronous API, and the primary Angular reviewer states.
-
-The [GitHub Actions CI workflow](.github/workflows/ci.yml) runs clean install, production builds, type-checking, normal tests, and lint for pushes to `main` and pull requests. It requires no project secrets and never invokes the paid Claude smoke test.
+Normal verification covers the source-control boundary, pair generation, Candidate Discovery, bounded Context Retrieval, AI-output normalization, failure handling, the API, and primary reviewer-interface states. The [GitHub Actions CI workflow](.github/workflows/ci.yml) runs clean install, production builds, type-checking, normal tests, and lint without secrets or paid AI calls.
 
 ## Current limitations
 
 - Structural Candidate Discovery currently supports changed TypeScript `.ts` files only.
 - Deleted and renamed files are not structurally analyzed.
-- Tree-sitter provides syntax-aware name correlation, not complete semantic symbol resolution. Separate modules can therefore contain unrelated declarations or references with the same name.
-- A same-name relationship may become a Candidate Pair even when the underlying code is independent. The semantic assessment stage evaluates this uncertainty instead of treating every structural match as a confirmed risk.
+- Tree-sitter provides syntax-aware name correlation rather than complete semantic symbol resolution, so coincidental same-name relationships can become Candidate Pairs for semantic assessment.
 - Analysis is synchronous and has no authentication, hosted service, persistent cache, or run history.
-- The controlled evaluation demonstrates known behaviour but does not measure production-scale accuracy.
-- The application is a portfolio MVP, not a production-ready service.
 
 ## Future direction
 
-The project can evolve from the current focused MVP into a broader cross-PR review platform. Planned directions include:
+Planned directions include:
 
-- structural analyzers for additional programming languages and richer symbol resolution;
-- integrations with additional source-control platforms such as Azure DevOps and GitLab;
-- support for multiple AI providers;
-- tiered AI analysis, using a lower-cost screening stage before detailed assessment when Candidate Pair volume justifies it;
-- a persistent result cache, initially suitable for a local SQLite implementation, so unchanged PR revisions and assessment context do not repeat paid AI calls;
-- provider prompt caching when stable repeated prompt content produces measurable savings;
-- richer repository context and retrieval strategies for cases where changed-file evidence is insufficient;
-- opt-in per-run and per-pair operational metrics for latency, tokens, model, approximate cost, request status, and bounded failure reasons;
-- asynchronous analysis, persistent history, continuous monitoring, and richer reviewer workflows as the product expands beyond a local MVP.
+- additional languages, richer symbol resolution, source-control platforms, and AI providers;
+- tiered AI assessment and caching to reduce repeated or unnecessary paid analysis;
+- richer repository context when changed-file evidence is insufficient;
+- asynchronous analysis, persistent history, continuous monitoring, and broader reviewer workflows.
 
 The long-term architectural direction is provider-neutral and multi-language, while the current implemented release remains explicit and honest about its GitHub, TypeScript, and Claude scope.
 

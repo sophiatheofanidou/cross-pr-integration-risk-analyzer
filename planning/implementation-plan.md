@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This plan implements the smallest credible end-to-end MVP before adding cost, scale or coverage optimizations.
+This plan implements the smallest credible end-to-end minimum viable product (MVP) before adding cost, scale or coverage optimizations.
 
 The design documents in `docs/design/` define product responsibilities. This plan records implementation order, verification and coherent commit points.
 
@@ -25,30 +25,22 @@ Optional infrastructure is introduced only when the milestone uses it.
 
 ## Current Checkpoint
 
-Completed:
+**Status:** `v0.1.0` release candidate
 
-- [x] project vision and initial design,
-- [x] repository foundation,
-- [x] `M1` initial domain contracts and test harness,
-- [x] `M2` GitHub integration and pull-request eligibility,
-- [x] `M3` controlled scenarios, structural Candidate Discovery and Context Retrieval,
-- [x] `M4` single Claude Risk Assessment,
-- [x] `M5` synchronous API, Angular reviewer UI and live provider integration,
-- [x] `M6` controlled demo implementation and live behavioural verification.
+All planned MVP milestones (`M1`–`M6`) are complete.
 
-Current checkpoint:
+The release candidate includes:
 
-- `M5` completed the synchronous API, Angular reviewer UI, key-free visual fixture and real provider integration,
-- `668f52a docs: define M6 demonstration plan` records the approved controlled scenario design,
-- `6b35997 fix: harden live risk assessment and evidence quality` records provider compatibility, output bounds, pair-scoped failures, concurrency, evidence attribution, severity and no-risk hardening,
-- `120ecf4 feat: improve reviewer-facing analysis results` records reviewer-oriented presentation and noisy standard-library term filtering,
-- the public demo repository contains eight open, approved pull requests from one base commit,
-- the live run produced 8 eligible PRs, 28 possible pairs, 4 Candidate Pairs, 24 pairs filtered before Claude, 3 risks, 1 no-risk result, no unassessed pairs and 1 warning,
-- repeated post-concurrency measurements record stage latency, model usage, tokens and estimated cost, with Claude Opus 5 selected for the recorded demo,
-- the current uncommitted checkpoint adds the final portfolio documentation, Opus screenshots, focused evaluation evidence and operational metrics; clean-install and fresh-clone verification pass locally,
-- the GitHub Actions workflow has been verified on GitHub, while the final uncommitted checkpoint still requires the project owner's review, commits and push followed by one final CI confirmation.
+- the complete deterministic Candidate Discovery and bounded Context Retrieval pipeline,
+- pair-scoped AI Risk Assessment,
+- the synchronous API and Angular reviewer workspace,
+- opt-in operational metrics and the local performance report,
+- a reproducible controlled demonstration with documented expected and actual results,
+- automated build, type-check, test and lint verification through GitHub Actions.
 
-M3 replaced the obsolete M1 evidence and context contracts with the current `TechnicalTermMatch`, `CandidatePair`, source-location and `AnalysisWarning` model.
+The controlled demonstration and operational measurements are documented in the [Controlled Demo Evaluation](../docs/demo-evaluation.md).
+
+Before the `v0.1.0` tag, the repository will receive one final independent portfolio and code review. Only a material finding from that review should reopen the MVP implementation plan.
 
 ---
 
@@ -437,9 +429,3 @@ Do not add during the MVP without an explicit design revision:
 - asynchronous job infrastructure.
 
 These exclusions control the first implementation only. The post-MVP roadmap preserves the intended evolution paths.
-
----
-
-# Immediate Next Step
-
-Review the final README, screenshots and controlled demo evaluation as one portfolio presentation. Then let the project owner organize the completed implementation and documentation into coherent commits and push them. Confirm the GitHub Actions workflow on the final pushed commit; if it remains green, prepare the `v0.1.0` tag and release checkpoint.
