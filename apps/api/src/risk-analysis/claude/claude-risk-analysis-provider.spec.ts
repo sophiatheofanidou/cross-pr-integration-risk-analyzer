@@ -42,6 +42,12 @@ function fakeClientReturning(message: unknown): {
   };
 }
 
+function fakeClientRejecting(error: unknown): Anthropic {
+  return {
+    messages: { create: vi.fn().mockRejectedValue(error) },
+  } as unknown as Anthropic;
+}
+
 describe('ClaudeRiskAnalysisProvider', () => {
   it('reports sanitized latency and provider usage for a completed assessment', async () => {
     const metrics: unknown[] = [];
@@ -101,6 +107,39 @@ describe('ClaudeRiskAnalysisProvider', () => {
       cacheReadInputTokens: 200,
       durationMs: expect.any(Number),
     })]);
+    expect(JSON.stringify(metrics)).not.toContain(prompt.systemInstructions);
+    expect(JSON.stringify(metrics)).not.toContain(prompt.userMessage);
+  });
+
+  it('reports bounded provider authentication diagnostics for the local HTML report', async () => {
+    const metrics: unknown[] = [];
+    const providerError = Object.assign(new Error('raw provider failure'), {
+      status: 401,
+      _request_id: 'req_auth_failure',
+      error: {
+        error: {
+          type: 'authentication_error',
+          message: 'API key is invalid.\n',
+        },
+      },
+    });
+    const provider = new ClaudeRiskAnalysisProvider({
+      model: 'test-model',
+      client: fakeClientRejecting(providerError),
+      reportOperationalMetric: (metric) => metrics.push(metric),
+    });
+
+    await expect(provider.assess(prompt)).rejects.toBe(providerError);
+
+    expect(metrics).toEqual([expect.objectContaining({
+      event: 'ai_provider_request',
+      outcome: 'FAILED',
+      failureReason: 'authentication_error',
+      failureDetail: 'HTTP 401 · authentication_error · API key is invalid.',
+      requestId: 'req_auth_failure',
+      httpStatus: 401,
+    })]);
+    expect(JSON.stringify(metrics)).not.toContain('raw provider failure');
     expect(JSON.stringify(metrics)).not.toContain(prompt.systemInstructions);
     expect(JSON.stringify(metrics)).not.toContain(prompt.userMessage);
   });

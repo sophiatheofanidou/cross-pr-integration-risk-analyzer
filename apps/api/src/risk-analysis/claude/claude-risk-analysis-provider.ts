@@ -13,6 +13,10 @@ import type {
   RiskAssessmentPrompt,
 } from '../risk-analysis-provider.js';
 import {
+  providerFailureDetail,
+  sanitizeProviderError,
+} from '../provider-error-diagnostic.js';
+import {
   claudeRiskResultSchema,
   normalizeClaudeRiskResult,
 } from './claude-risk-result-schema.js';
@@ -191,10 +195,12 @@ export class ClaudeRiskAnalysisProvider implements RiskAnalysisProvider {
               { cause: error, requestId },
             )
             : error;
-      const rawStatus =
-        typeof error === 'object' && error !== null
-          ? (error as Record<string, unknown>)['status']
-          : undefined;
+      const providerDiagnostic = sanitizeProviderError(reportedError);
+      const failureDetail =
+        reportedError instanceof ClaudeRiskAnalysisError
+          ? invalidOutputFailureDetail(reportedError)
+          : providerFailureDetail(providerDiagnostic);
+      const metricRequestId = requestId ?? providerDiagnostic.requestId;
       emitOperationalMetric(this.reportOperationalMetric, {
         event: 'ai_provider_request',
         provider: 'claude',
@@ -204,20 +210,18 @@ export class ClaudeRiskAnalysisProvider implements RiskAnalysisProvider {
         maxTokens: this.maxTokens,
         durationMs: elapsedMilliseconds(startedAt),
         outcome: 'FAILED',
-        errorName: reportedError instanceof Error ? reportedError.name : 'UnknownProviderError',
+        errorName: providerDiagnostic.errorName,
         ...(reportedError instanceof ClaudeRiskAnalysisError
           ? { failureReason: reportedError.reason }
-          : {}),
-        ...(reportedError instanceof ClaudeRiskAnalysisError
-          ? { failureDetail: invalidOutputFailureDetail(reportedError) }
-          : {}),
-        ...(requestId !== undefined ? { requestId } : {}),
+          : { failureReason: providerDiagnostic.providerErrorType ?? providerDiagnostic.failureReason ?? providerDiagnostic.errorName }),
+        ...(failureDetail !== undefined ? { failureDetail } : {}),
+        ...(metricRequestId !== undefined ? { requestId: metricRequestId } : {}),
         ...(stopReason !== undefined ? { stopReason } : {}),
         ...(inputTokens !== undefined ? { inputTokens } : {}),
         ...(outputTokens !== undefined ? { outputTokens } : {}),
         ...(cacheCreationInputTokens !== undefined ? { cacheCreationInputTokens } : {}),
         ...(cacheReadInputTokens !== undefined ? { cacheReadInputTokens } : {}),
-        ...(typeof rawStatus === 'number' ? { httpStatus: rawStatus } : {}),
+        ...(providerDiagnostic.httpStatus !== undefined ? { httpStatus: providerDiagnostic.httpStatus } : {}),
       });
       throw reportedError;
     }

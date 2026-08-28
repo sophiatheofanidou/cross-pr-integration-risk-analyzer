@@ -29,6 +29,10 @@ import {
 } from '../risk-analysis/risk-assessment.js';
 import type { RiskAnalysisProvider } from '../risk-analysis/risk-analysis-provider.js';
 import {
+  sanitizeProviderError,
+  type SanitizedProviderErrorDiagnostic,
+} from '../risk-analysis/provider-error-diagnostic.js';
+import {
   elapsedMilliseconds,
   emitOperationalMetric,
   withOperationalMetricContext,
@@ -49,15 +53,9 @@ export interface AnalysisRequest {
   readonly targetBranch: string;
 }
 
-export interface ProviderFailureDiagnostic {
+export interface ProviderFailureDiagnostic extends SanitizedProviderErrorDiagnostic {
   readonly pullRequestAId: string;
   readonly pullRequestBId: string;
-  readonly errorName: string;
-  readonly failureReason?: string;
-  readonly requestId?: string;
-  readonly httpStatus?: number;
-  readonly providerErrorType?: string;
-  readonly providerMessage?: string;
 }
 
 export interface AnalysisDependencies {
@@ -69,48 +67,14 @@ export interface AnalysisDependencies {
   readonly reportOperationalMetric?: OperationalMetricReporter;
 }
 
-function optionalProperty(error: unknown, property: string): unknown {
-  return typeof error === 'object' && error !== null
-    ? (error as Record<string, unknown>)[property]
-    : undefined;
-}
-
 function providerFailureDiagnostic(
   error: RiskAnalysisProviderInvocationError,
   candidatePair: CandidatePair,
 ): ProviderFailureDiagnostic {
-  const providerError = error.cause;
-  const failureReason = optionalProperty(providerError, 'reason');
-  const requestId =
-    optionalProperty(providerError, 'requestId') ??
-    optionalProperty(providerError, 'requestID') ??
-    optionalProperty(providerError, 'request_id') ??
-    optionalProperty(providerError, '_request_id');
-  const httpStatus = optionalProperty(providerError, 'status');
-  const responseBody = optionalProperty(providerError, 'error');
-  const responseError = optionalProperty(responseBody, 'error');
-  const providerErrorType =
-    optionalProperty(responseError, 'type') ?? optionalProperty(providerError, 'type');
-  const rawProviderMessage = optionalProperty(responseError, 'message');
-  // Anthropic validation messages describe the rejected request/schema and do
-  // not contain the prompt or API key. Keep them bounded and single-line so
-  // operational diagnostics remain useful without dumping request content.
-  const providerMessage =
-    typeof rawProviderMessage === 'string'
-      ? rawProviderMessage.replace(/\s+/g, ' ').trim().slice(0, 600)
-      : undefined;
-
   return {
     pullRequestAId: candidatePair.pullRequestA.id,
     pullRequestBId: candidatePair.pullRequestB.id,
-    errorName: providerError instanceof Error ? providerError.name : 'UnknownProviderError',
-    ...(typeof failureReason === 'string' ? { failureReason } : {}),
-    ...(typeof requestId === 'string' ? { requestId } : {}),
-    ...(typeof httpStatus === 'number' ? { httpStatus } : {}),
-    ...(typeof providerErrorType === 'string' ? { providerErrorType } : {}),
-    ...(providerMessage !== undefined && providerMessage.length > 0
-      ? { providerMessage }
-      : {}),
+    ...sanitizeProviderError(error.cause),
   };
 }
 

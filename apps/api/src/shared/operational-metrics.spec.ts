@@ -64,9 +64,11 @@ describe('operational metrics', () => {
     expect(summaries[0]).toContain('Total: 48.00s');
     expect(summaries[0]).toContain('Eligible Pull Request Retrieval: 11.00s');
     expect(summaries[0]).toContain('Candidate Discovery: 3.00s');
-    expect(summaries[0]).toContain('Context Retrieval + AI Risk Assessment: 34.00s');
+    expect(summaries[0]).toContain('AI Risk Assessment: 34.00s');
+    expect(summaries[0]).toContain('AI calls: 1');
     expect(summaries[0]).toContain('PR 1 + PR 2: 8.50s (COMPLETED)');
-    expect(summaries[0]).toContain('Results: 3 risk / 1 no risk / 1 warnings');
+    expect(summaries[0]).toContain('Failures: 0');
+    expect(summaries[0]).not.toContain('Results:');
     expect(summaries[0]).toContain('analysis-report.html');
     expect(summaries[0]).not.toContain('{"event"');
   });
@@ -85,14 +87,17 @@ describe('operational metrics', () => {
       });
 
       const html = readFileSync(join(directory, 'analysis-report.html'), 'utf8');
-      expect(html).toContain('Analysis performance runs');
-      expect(html).toContain('Run comparison');
+      expect(html).toContain('Analysis Performance Report');
+      expect(html).toContain('Run Comparison');
       expect(html).toContain('Eligible Pull Request<br>Retrieval');
       expect(html).toContain('Candidate<br>Discovery');
-      expect(html).toContain('Context Retrieval +<br>AI Risk Assessment');
+      expect(html).toContain('AI Risk<br>Assessment');
+      expect(html).toContain('<th>Failures</th><th>Est. AI cost</th>');
       expect(html).toContain('class="comparison-table"');
       expect(html).toContain('PR 1 + PR 2');
-      expect(html).toContain('3</td><td>1</td><td>1</td>');
+      expect(html).not.toContain('<th>Risks</th>');
+      expect(html).not.toContain('<th>No risk</th>');
+      expect(html).not.toContain('<th>Warnings</th>');
       expect((html.match(/<details>/g) ?? [])).toHaveLength(2);
       expect((html.match(/35\.00s/g) ?? []).length).toBeGreaterThan(0);
     } finally {
@@ -110,10 +115,33 @@ describe('operational metrics', () => {
       });
 
       const html = readFileSync(join(directory, 'analysis-report.html'), 'utf8');
-      expect(html).toContain('$2/MTok input and $10/MTok output');
+      expect(html).toContain('$2 / MTok');
+      expect(html).toContain('$10 / MTok');
       expect(html).toContain('$0.0054');
       expect(html).toContain('Est. AI cost');
       expect(html).toContain('Est. cost');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('summarizes operational failures and keeps their details in the expandable tables', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'cross-pr-html-failure-counts-'));
+    try {
+      const reporter = createHtmlOperationalMetricReporter({ directory });
+      await withOperationalMetricContext(async () => {
+        reporter({ event: 'github_request', operation: 'compareCommits', durationMs: 400, outcome: 'NETWORK_FAILURE', errorName: 'TypeError' });
+        reporter({ event: 'ai_provider_request', provider: 'claude', pullRequestAId: '1', pullRequestBId: '2', model: 'test-model', maxTokens: 2048, durationMs: 500, outcome: 'FAILED', failureReason: 'authentication_error', failureDetail: 'HTTP 401 · authentication_error · API key is invalid.', requestId: 'req_auth_failure', httpStatus: 401 });
+        reporter(completedRun);
+      });
+
+      const html = readFileSync(join(directory, 'analysis-report.html'), 'utf8');
+      expect(html).toContain('<th>Failures</th><th>Est. AI cost</th>');
+      expect(html).toContain('compareCommits</td><td>1</td><td>0.40s</td><td>0.40s</td><td>1</td>');
+      expect(html).toContain('HTTP 401 · authentication_error · API key is invalid.');
+      expect(html).toContain('req_auth_failure');
+      expect(html).toContain('"httpStatus":401');
+      expect(html).toContain('<td class="number">2</td><td class="number"><strong>—</strong></td>');
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -129,7 +157,8 @@ describe('operational metrics', () => {
       });
 
       const html = readFileSync(join(directory, 'analysis-report.html'), 'utf8');
-      expect(html).toContain('$5/MTok input and $25/MTok output');
+      expect(html).toContain('$5 / MTok');
+      expect(html).toContain('$25 / MTok');
       expect(html).toContain('$0.0135');
     } finally {
       rmSync(directory, { recursive: true, force: true });
@@ -151,6 +180,28 @@ describe('operational metrics', () => {
       expect(html).toContain('legacy-run');
       expect(html).toContain('48.77s');
       expect((html.match(/<details>/g) ?? [])).toHaveLength(1);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('can curate a one-time recent-run baseline without changing normal append behaviour', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'cross-pr-html-recent-baseline-'));
+    try {
+      const reporter = createHtmlOperationalMetricReporter({ directory });
+      for (const durationMs of [10_000, 20_000, 30_000]) {
+        await withOperationalMetricContext(async () => reporter({ ...completedRun, durationMs }));
+      }
+
+      expect(ensureHtmlOperationalMetricsReport(directory, 2)).toBe(join(directory, 'analysis-report.html'));
+      const curatedHtml = readFileSync(join(directory, 'analysis-report.html'), 'utf8');
+      expect((curatedHtml.match(/<details>/g) ?? [])).toHaveLength(2);
+      expect(curatedHtml).not.toContain('10.00s');
+
+      await withOperationalMetricContext(async () => reporter({ ...completedRun, durationMs: 40_000 }));
+      const appendedHtml = readFileSync(join(directory, 'analysis-report.html'), 'utf8');
+      expect((appendedHtml.match(/<details>/g) ?? [])).toHaveLength(3);
+      expect(appendedHtml).toContain('40.00s');
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
