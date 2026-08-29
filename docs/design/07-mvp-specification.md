@@ -6,8 +6,6 @@ This document defines the smallest complete portfolio version of the Cross-PR In
 
 The MVP must demonstrate the product's core value end to end: automatically discover approved pull-request pairs that have a concrete structural relationship, use focused AI reasoning to identify plausible non-textual integration risks, and present an explainable reviewer-facing result.
 
-It is not a production-scale optimization exercise and does not attempt exhaustive detection.
-
 ---
 
 ## MVP Workflow
@@ -54,8 +52,6 @@ The workflow is:
 | Analyzed Source Language | TypeScript `.ts` files |
 | AI Provider | Claude |
 | AI Strategy | One structured assessment per Candidate Pair with sufficient context |
-| Persistent Result Cache | Deferred |
-| Prompt Caching | Deferred |
 | Repository Context | Focused change hunks and source snippets |
 
 These choices define the first implementation, not permanent architectural constraints.
@@ -248,10 +244,10 @@ The MVP is successful when it can demonstrate that:
 - a completed analysis with no Candidate Pairs is presented as a valid result,
 - the complete workflow runs without repository-wide retrieval.
 
-The controlled demo has met these behavioural criteria. The result demonstrates a credible end-to-end workflow, not exhaustive accuracy or production scalability.
+The controlled demo has met these behavioural criteria and validates the complete `v0.1.0` workflow against known ground truth.
 
 ---
 
 ## Planned Future Improvements
 
-The intended evolution of the project remains deferred rather than rejected. The canonical roadmap and its evidence gates are maintained under [Planned Post-MVP Improvements](08-design-log.md#planned-post-mvp-improvements) in the Design Log; this specification remains the source of truth for the implemented `v0.1.0` boundary.
+The canonical roadmap and its evidence gates are maintained under [Planned Post-MVP Improvements](08-design-log.md#planned-post-mvp-improvements) in the Design Log; this specification remains the source of truth for the implemented `v0.1.0` boundary.

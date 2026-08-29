@@ -4,7 +4,7 @@
 
 This evaluation documents whether the portfolio minimum viable product (MVP) delivers its intended end-to-end reviewer workflow against known ground truth. It verifies that the analyzer selects the correct review scope, narrows the possible pull-request combinations through deterministic evidence, identifies and explains known build-time and semantic risks, dismisses a coincidental match, preserves coverage limitations, and presents actionable reviewer evidence.
 
-It also records the operational behaviour of the implemented pipeline—including stage latency, model usage, token consumption, estimated cost, and failures—to support the final implementation and recorded demo choices while making the evaluation boundaries explicit.
+It also records the operational behaviour of the implemented pipeline, including stage latency, model usage, token consumption, estimated cost, and failures. These measurements support the final implementation and recorded demo choices while keeping the evaluation boundaries explicit.
 
 The public [Cross-PR Risk Demo Online Store](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store) is a small runnable TypeScript application created for this purpose. Eight pull requests were branched from the same base commit, kept open, and approved against `main`. Each PR is valid independently. Four designed pairs test build failure, semantic failure, a coincidental structural match, and incomplete language coverage.
 
@@ -22,7 +22,7 @@ The completed run keeps the complete decision path visible. Candidate Discovery 
 |---|---|---|---|---|
 | [PR&nbsp;#1](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/1)&nbsp;+&nbsp;[PR&nbsp;#2](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/2) | `sendNotification` | Combined code fails type-check because a new caller uses the old two-argument signature | Risk identified; High severity | Risk identified; High severity |
 | [PR&nbsp;#3](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/3)&nbsp;+&nbsp;[PR&nbsp;#4](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/4) | `loadPreferences` | Combined code fails type-check because a caller treats a new `Promise<Preferences>` as a synchronous value | Risk identified; High severity | Risk identified; High severity |
-| [PR&nbsp;#5](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/5)&nbsp;+&nbsp;[PR&nbsp;#6](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/6) | `calculateOrderTotal` | Combined code builds but can authorize 25 cents instead of 2,500 cents | Risk identified; High severity | Risk identified; High severity |
+| [PR&nbsp;#5](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/5)&nbsp;+&nbsp;[PR&nbsp;#6](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/6) | `calculateOrderTotal` | Combined code builds, but an intended €25 payment can be authorized as 25 cents (€0.25) | Risk identified; High severity | Risk identified; High severity |
 | [PR&nbsp;#7](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/7)&nbsp;+&nbsp;[PR&nbsp;#8](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store/pull/8) | `formatReference` | Module-local helpers are unrelated; the combination builds and behaves correctly | No risk identified; one unsupported-file warning | No risk identified; one unsupported-file warning |
 
 The remaining 24 unordered pairs were designed to be unrelated and were filtered before AI Risk Assessment, as expected.
@@ -49,7 +49,7 @@ The detailed captures come from repeated controlled Opus runs. The exact wording
 
 ### Build-time contract failure
 
-One pull request changes `sendNotification` from two positional parameters to a request-object contract. Another independently adds a caller that still uses the earlier two-argument form. The analyzer attributes each side correctly, explains why the combined call no longer matches the declaration, and directs the reviewer to verify the merged type-check and exact call site.
+One pull request changes `sendNotification` from accepting two separate arguments to accepting a single request object. Another independently adds a caller that still uses the earlier two-argument form. The analyzer attributes each side correctly, explains why the combined call no longer matches the declaration, and directs the reviewer to verify the merged type-check and exact call site.
 
 <p align="center">
   <img src="assets/build-failure-result.png" alt="Build-failure result showing the incompatible sendNotification call and declaration">
@@ -57,7 +57,7 @@ One pull request changes `sendNotification` from two positional parameters to a 
 
 ### Semantic runtime risk
 
-The payment scenario is deliberately more difficult than a compilation failure. One pull request changes the unit returned by `calculateOrderTotal`; another passes that value to payment authorization under the earlier cents assumption. Both values remain numbers, so the combined code can build while authorizing one hundredth of the intended amount.
+The payment scenario is deliberately more difficult than a compilation failure. One pull request changes the unit returned by `calculateOrderTotal`; another passes that value to payment authorization under the earlier cents assumption. Both values remain numbers, so the combined code can build while an intended €25 payment is authorized as 25 cents (€0.25).
 
 <p align="center">
   <img src="assets/semantic-risk-result.png" alt="Semantic-risk result showing the calculateOrderTotal unit mismatch and selected technical evidence">
@@ -87,15 +87,16 @@ The recorded runs showed an average total analysis time of 21.28 seconds with So
 
 `AI Risk Assessment` is the measured wall-clock time for the complete concurrent assessment stage. It includes local bounded-context preparation before each request, but a provider-free benchmark measured that preparation at approximately 0.025 ms on average for the controlled path, making it negligible beside the observed multi-second AI requests. Individual call durations remain available in the expandable Run Details and can overlap because Candidate Pairs are assessed concurrently.
 
-Estimated cost uses the [Claude Sonnet 5](https://www.anthropic.com/news/claude-sonnet-5) price of $2 per million input tokens and $10 per million output tokens and the [Claude Opus 5](https://www.anthropic.com/news/claude-opus-5) price of $5 per million input tokens and $25 per million output tokens. Actual billing can differ with caching, batch or regional processing, negotiated pricing, credits, and taxes.
+Estimated cost uses the pricing available at the time of writing: [Claude Sonnet 5](https://www.anthropic.com/news/claude-sonnet-5) at $2 per million input tokens and $10 per million output tokens, and [Claude Opus 5](https://www.anthropic.com/news/claude-opus-5) at $5 per million input tokens and $25 per million output tokens. Actual billing can differ with caching, batch or regional processing, negotiated pricing, credits, and taxes.
 
 ## What the evaluation showed
 
-- **Focused filtering reduced unnecessary AI work.** Only the four technically related pairs reached AI Risk Assessment; the other 24 combinations were filtered first.
-- **It detected both build-time and runtime risks.** It identified two contract mismatches that can fail type-checking, found the type-correct cents-versus-euros runtime risk, and did not report the unrelated same-name match as a risk.
+- **Focused filtering reduced unnecessary AI work.** Only the 4 technically related pairs reached AI Risk Assessment; the other 24 combinations were filtered first.
+- **It detected both build-time and runtime risks.** It identified 2 contract mismatches that can fail type-checking, found the type-correct cents-versus-euros runtime risk, and did not report the unrelated same-name match as a risk.
 - **Uncertainty remained visible.** Unsupported input produced a coverage warning, and a failed assessment would be marked as not run rather than reported as no risk.
 - **Individual failures remain contained.** One unsuccessful AI assessment does not discard results already completed for other Candidate Pairs.
 - **The output supports reviewer action.** Each finding connects the two changes, points to relevant code, and states what should be verified before merge.
+- **The operational comparison made the model trade-off explicit.** Both models produced the expected classifications without operational failures. Opus was faster and more concise, while Sonnet's estimated cost was approximately half.
 
 ## Scope and limitations
 

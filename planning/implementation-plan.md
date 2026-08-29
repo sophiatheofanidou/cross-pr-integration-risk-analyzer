@@ -4,7 +4,7 @@
 
 This plan implements the smallest credible end-to-end minimum viable product (MVP) before adding cost, scale or coverage optimizations.
 
-The design documents in `docs/design/` define product responsibilities. This plan records implementation order, verification and coherent commit points.
+The design documents in [`docs/design`](../docs/design/) define product responsibilities. This plan records implementation order, verification and coherent commit points.
 
 ---
 
@@ -41,26 +41,6 @@ The release candidate includes:
 The controlled demonstration and operational measurements are documented in the [Controlled Demo Evaluation](../docs/demo-evaluation.md).
 
 Before the `v0.1.0` tag, the repository will receive one final independent portfolio and code review. Only a material finding from that review should reopen the MVP implementation plan.
-
----
-
-## Confirmed MVP Technology
-
-| Area | Decision |
-|---|---|
-| Frontend | Angular |
-| Backend | Node.js + TypeScript |
-| Test Runner | Vitest |
-| Runtime Validation | Zod at GitHub and Claude boundaries |
-| Source Control | GitHub REST API |
-| Structural Parser | Tree-sitter |
-| Analyzed Source | TypeScript `.ts` files |
-| AI Provider | Claude |
-| AI Strategy | One structured assessment per Candidate Pair with sufficient context |
-| API Style | One synchronous analysis operation |
-| Persistent Cache | Deferred |
-
-The existing npm workspace, supported Node.js release line and root verification commands remain unchanged.
 
 ---
 

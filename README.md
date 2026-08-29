@@ -14,7 +14,7 @@ When such an interaction is discovered only after integration, the consequences 
 
 ### The solution
 
-The Cross-PR Integration Risk Analyzer helps reviewers find which approved pull-request combinations deserve joint investigation before merge. It systematically examines the approved change set, uses deterministic structural analysis to reduce the search space, applies focused AI reasoning only to technically related combinations, and presents the result as explainable evidence and targeted reviewer actions.
+The Cross-PR Integration Risk Analyzer provides a cost-aware, AI-assisted workflow for finding which approved pull-request combinations deserve joint investigation before merge. It systematically examines the approved change set, uses deterministic structural analysis to reduce the search space, applies focused AI reasoning only to technically related combinations, and presents the result as explainable evidence and targeted reviewer actions.
 
 ### Who it is for
 
@@ -23,6 +23,8 @@ The primary users are code reviewers, senior engineers, and tech leads working w
 For deeper product background, see the [Project Vision](docs/design/00-project-vision.md) and [Problem Analysis](docs/design/01-problem-analysis.md).
 
 ## Why this workflow is needed
+
+The motivation for this project originated from a real software engineering scenario in a large development environment, where independently approved pull requests introduced unexpected integration issues after being merged.
 
 Existing tools address adjacent parts of the problem:
 
@@ -47,13 +49,13 @@ The initial filtering is deterministic and repeatable: it decides which pairs de
   <img src="docs/assets/application-overview.png" alt="Application overview showing the controlled analysis totals and visible coverage warning">
 </p>
 
-<p align="center"><em>The reviewer workspace keeps the full analysis scope visible: eight eligible pull requests produce 28 possible pairs, deterministic Candidate Discovery retains four for assessment, and unsupported input remains explicit.</em></p>
+<p align="center"><em>The reviewer workspace keeps the full analysis scope visible: 8 eligible pull requests produce 28 possible pairs, deterministic Candidate Discovery retains 4 for assessment, and unsupported input remains explicit.</em></p>
 
 For a technical review, start with [Architecture](docs/design/02-architecture.md), then follow the implemented pipeline through [Candidate Discovery](docs/design/04-candidate-discovery.md), [Context Retrieval](docs/design/05-context-retrieval.md), and [AI Risk Analysis](docs/design/06-ai-risk-analysis.md).
 
 ## Controlled Demo Evaluation
 
-The minimum viable product (MVP) was evaluated against known ground truth in a public [controlled demo repository](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store): eight independently valid, approved PRs created from the same base commit. From 28 possible pairs, deterministic Candidate Discovery retained the four designed technical relationships and filtered 24 before AI. The AI Risk Assessment identified all three known risks and correctly dismissed the no-risk control.
+The minimum viable product (MVP) was evaluated against known ground truth in a public [controlled demo repository](https://github.com/sophiatheofanidou/cross-pr-risk-demo-online-store): 8 independently valid, approved PRs created from the same base commit. From 28 possible pairs, deterministic Candidate Discovery retained the 4 designed technical relationships and filtered 24 before AI. The AI Risk Assessment identified all 3 known risks and correctly dismissed the no-risk control.
 
 | Controlled scenario | Ground truth | Analyzer outcome |
 |---|---|---|
@@ -66,7 +68,7 @@ An unsupported file type also produced an explicit coverage warning instead of b
 
 ### Representative semantic risk
 
-The strongest controlled scenario is a semantic data-unit mismatch that remains type-correct. One pull request changes an order total from cents to euros while another passes the value to payment authorization under the earlier cents assumption. The analyzer connects both changes, explains that their combination could authorize one hundredth of the intended amount, and identifies the contract a reviewer should verify.
+The strongest controlled scenario is a semantic data-unit mismatch that remains type-correct. One pull request changes an order total from cents to euros while another passes the value to payment authorization under the earlier cents assumption. For example, an intended €25 payment could be sent to the payment gateway as 25 cents (€0.25). The analyzer connects both changes and identifies the contract a reviewer should verify.
 
 <p align="center">
   <img src="docs/assets/semantic-risk-result.png" alt="Semantic integration risk showing a cents-versus-euros contract mismatch, combined effect, reviewer action, and supporting source locations">
@@ -82,22 +84,13 @@ After the workflow was behaviourally validated, opt-in metrics were used to meas
 
 The opt-in local performance report preserves comparable runs without storing credentials, repository URLs, prompts, provider payloads, or source-code content. It separates end-to-end and pipeline-stage latency, records AI calls and token usage, estimates cost from a dated pricing configuration, and keeps operational failures visible. The report remains separate from the reviewer workspace so product findings and performance evidence do not compete for attention.
 
+Both models produced the expected 3-risk/1-no-risk classification without operational failures on the same controlled workload. Opus averaged 13.16 seconds compared with 21.28 seconds for Sonnet and returned more concise responses, while Sonnet's estimated cost was approximately half; the full method, results, and model-selection rationale are documented in the [Controlled Demo Evaluation](docs/demo-evaluation.md).
+
 <p align="center">
-  <img src="docs/assets/analysis-performance-report.png" alt="Analysis Performance Report comparing four recorded runs by stage latency, AI usage, failures, and estimated cost">
+  <img src="docs/assets/analysis-performance-report.png" alt="Analysis Performance Report comparing 4 recorded runs by stage latency, AI usage, failures, and estimated cost">
 </p>
 
-<p align="center"><em>Four recorded runs compare pipeline timing and AI usage for the same controlled workload. The Opus runs completed faster with shorter outputs, while the Sonnet runs had approximately half the estimated cost.</em></p>
-
-## Safety boundaries
-
-The analyzer supports human review without taking repository decisions or actions. It does not:
-
-- approve, reject, merge, or establish textual mergeability;
-- check out, build, or test combined PR states;
-- send the complete repository to the AI provider;
-- treat a structural match as a confirmed risk or missing context as a no-risk result.
-
-HTTP requests and structured responses from source-control and AI providers are validated when they enter the application. Provider credentials are loaded by the backend from environment variables, are never sent to the browser, and remain outside Git.
+<p align="center"><em>4 recorded runs compare pipeline timing, AI usage, failures, and estimated cost for the same controlled workload.</em></p>
 
 ## AI assessment safeguards
 
@@ -198,9 +191,22 @@ npm run test:claude-smoke --workspace @cross-pr-risk-analyzer/api
 
 ## Tests and CI
 
-Normal verification covers the source-control boundary, pair generation, Candidate Discovery, bounded Context Retrieval, AI-output normalization, failure handling, the API, and primary reviewer-interface states. The [GitHub Actions CI workflow](.github/workflows/ci.yml) runs clean install, production builds, type-checking, normal tests, and lint without secrets or paid AI calls.
+Automated unit, integration, and Angular component tests cover pair generation, Candidate Discovery, bounded Context Retrieval, source-control and AI-provider boundaries, AI-output normalization, failure isolation, the HTTP API, and primary reviewer-interface states. The [GitHub Actions CI workflow](.github/workflows/ci.yml) runs clean install, production builds, type-checking, normal tests, and lint without secrets or paid AI calls.
 
-## Current limitations
+## Safety boundaries
+
+The analyzer supports human review without taking repository decisions or actions. It does not:
+
+- approve, reject, merge, or establish textual mergeability;
+- check out, build, or test combined PR states;
+- send the complete repository to the AI provider;
+- treat a structural match as a confirmed risk or missing context as a no-risk result.
+
+HTTP requests and structured responses from source-control and AI providers are validated when they enter the application. Provider credentials are loaded by the backend from environment variables, are never sent to the browser, and remain outside Git.
+
+## Current MVP limitations
+
+Version 0.1.0 has the following explicit scope limits:
 
 - Structural Candidate Discovery currently supports changed TypeScript `.ts` files only.
 - Deleted and renamed files are not structurally analyzed.

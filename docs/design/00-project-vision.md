@@ -1,11 +1,5 @@
 # Project Vision
 
-## Working Title
-
-Cross-PR Integration Risk Analyzer
-
----
-
 ## Vision
 
 Modern software teams often develop, review and approve many pull requests in parallel.
