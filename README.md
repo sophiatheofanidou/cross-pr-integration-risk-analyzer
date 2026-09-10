@@ -1,5 +1,9 @@
 # Cross-PR Integration Risk Analyzer
 
+**Engineering focus:** Generative AI · Hybrid deterministic and AI analysis ·
+LLM integration · Prompt engineering · Controlled LLM evaluation and safeguards ·
+TypeScript · Angular
+
 [![CI](https://github.com/sophiatheofanidou/cross-pr-integration-risk-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/sophiatheofanidou/cross-pr-integration-risk-analyzer/actions/workflows/ci.yml)
 
 ## Overview
