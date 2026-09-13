@@ -25,11 +25,11 @@ Optional infrastructure is introduced only when the milestone uses it.
 
 ## Current Checkpoint
 
-**Status:** `v0.1.0` release candidate
+**Status:** Released as `v0.1.0`
 
-All planned MVP milestones (`M1`–`M6`) are complete.
+All planned MVP milestones (`M1`–`M6`) are complete and the release is published.
 
-The release candidate includes:
+The `v0.1.0` release includes:
 
 - the complete deterministic Candidate Discovery and bounded Context Retrieval pipeline,
 - pair-scoped AI Risk Assessment,
@@ -40,7 +40,7 @@ The release candidate includes:
 
 The controlled demonstration and operational measurements are documented in the [Controlled Demo Evaluation](../docs/demo-evaluation.md).
 
-Before the `v0.1.0` tag, the repository will receive one final independent portfolio and code review. Only a material finding from that review should reopen the MVP implementation plan.
+The `v0.1.0` tag marks the completed MVP baseline. Material findings discovered after this release belong in the post-MVP roadmap or a follow-up release rather than being described here as pre-tag work.
 
 ---
 
@@ -227,7 +227,7 @@ feat: add Claude cross-PR risk assessment
 
 ---
 
-# Remaining MVP Milestones
+# Completed Application and Release Milestones
 
 ## M5 — Minimal End-to-End Application
 
@@ -288,7 +288,7 @@ fix: complete live provider integration
 
 ## M6 — Reproducible Demo and MVP Hardening
 
-**Status:** Demo evidence and local verification complete; final owner review, commits and CI confirmation pending
+**Status:** Complete — released as `v0.1.0`
 
 ### Goal
 
@@ -311,14 +311,14 @@ The demonstration must optimize for immediate reviewer comprehension as well as 
 - preserved the self-hosted, bring-your-own-key and human-review boundaries,
 - retained simulated operation and UI-only states in the key-free visual fixture.
 
-### Portfolio and Release Scope
+### Completed Portfolio and Release Scope
 
-- add a secret-free GitHub Actions workflow for clean install, build, type-check, normal tests and lint,
-- present the problem, architecture, safety boundaries, controlled evidence and limitations in the root README,
-- keep detailed expected-versus-actual evidence and bounded provider metrics in `docs/demo-evaluation.md`,
-- update source-of-truth documents and external Learning Notes without duplicating their responsibilities,
-- complete local clean-install and fresh-clone verification,
-- verify GitHub-hosted CI after the project owner commits and pushes.
+- added a secret-free GitHub Actions workflow for clean install, build, type-check, normal tests and lint,
+- presented the problem, architecture, safety boundaries, controlled evidence and limitations in the root README,
+- recorded detailed expected-versus-actual evidence and bounded provider metrics in `docs/demo-evaluation.md`,
+- updated the repository's source-of-truth documents without duplicating their responsibilities,
+- completed local clean-install and fresh-clone verification,
+- verified CI on GitHub-hosted infrastructure.
 
 ### Explicitly Deferred
 

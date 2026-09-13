@@ -6,6 +6,13 @@ TypeScript · Angular
 
 [![CI](https://github.com/sophiatheofanidou/cross-pr-integration-risk-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/sophiatheofanidou/cross-pr-integration-risk-analyzer/actions/workflows/ci.yml)
 
+<p align="center">
+  <a href="#example-result-a-payment-unit-mismatch">Example result</a> ·
+  <a href="#explore-the-ui-without-credentials">Explore the UI</a> ·
+  <a href="docs/demo-evaluation.md">Evaluation</a> ·
+  <a href="docs/design/02-architecture.md">Architecture</a>
+</p>
+
 ## Overview
 
 ### The problem
@@ -14,7 +21,7 @@ Modern software teams often develop, review, and approve multiple pull requests 
 
 ### Why it matters
 
-When such an interaction is discovered only after integration, the consequences can include broken builds, runtime defects, delayed releases, repeated validation, additional debugging effort, emergency fixes, and disruption to planned production delivery. The cost is not only technical; it consumes developer and reviewer time and can slow the work of multiple teams.
+Discovering these interactions after merge adds debugging, repeated validation, and release delays.
 
 ### The solution
 
@@ -26,9 +33,19 @@ The primary users are code reviewers, senior engineers, and tech leads working w
 
 For deeper product background, see the [Project Vision](docs/design/00-project-vision.md) and [Problem Analysis](docs/design/01-problem-analysis.md).
 
+## Example result: a payment unit mismatch
+
+In the controlled demo, one PR changes an order total from cents to euros while another passes that value to payment authorization under the earlier cents assumption. The combined code remains type-correct, but an intended **€25 payment could be authorized as €0.25**. The analyzer connects both changes and identifies the contract a reviewer should verify.
+
+<p align="center">
+  <img src="docs/assets/semantic-risk-result.png" alt="Semantic integration risk showing a cents-versus-euros contract mismatch, combined effect, reviewer action, and supporting source locations">
+</p>
+
+<p align="center"><em>A controlled result showing each PR's contribution, their combined effect, and a targeted reviewer action.</em></p>
+
 ## Why this workflow is needed
 
-The motivation for this project originated from a real software engineering scenario in a large development environment, where independently approved pull requests introduced unexpected integration issues after being merged.
+The project originated from a real engineering scenario where independently approved pull requests caused unexpected integration issues after merge.
 
 Existing tools address adjacent parts of the problem:
 
@@ -70,41 +87,27 @@ The minimum viable product (MVP) was evaluated against known ground truth in a p
 
 An unsupported file type also produced an explicit coverage warning instead of being silently treated as negative evidence.
 
-### Representative semantic risk
-
-The strongest controlled scenario is a semantic data-unit mismatch that remains type-correct. One pull request changes an order total from cents to euros while another passes the value to payment authorization under the earlier cents assumption. For example, an intended €25 payment could be sent to the payment gateway as 25 cents (€0.25). The analyzer connects both changes and identifies the contract a reviewer should verify.
-
-<p align="center">
-  <img src="docs/assets/semantic-risk-result.png" alt="Semantic integration risk showing a cents-versus-euros contract mismatch, combined effect, reviewer action, and supporting source locations">
-</p>
-
-<p align="center"><em>A semantic data-unit mismatch can remain type-correct while producing materially incorrect runtime behaviour. The result connects both changes, explains their combined effect, and identifies the contract a reviewer should verify.</em></p>
-
-The complete expected-versus-actual evidence, result captures, evaluation findings, and limitations are documented in the [Controlled Demo Evaluation](docs/demo-evaluation.md).
+The complete expected-versus-actual evidence, result captures, and limitations are documented in the [Controlled Demo Evaluation](docs/demo-evaluation.md). These designed scenarios demonstrate the workflow; they do not estimate production-scale accuracy.
 
 ## Operational Performance
 
-After the workflow was behaviourally validated, opt-in metrics were used to measure the live pipeline and refine the final implementation and recorded model choice.
-
-The opt-in local performance report preserves comparable runs without storing credentials, repository URLs, prompts, provider payloads, or source-code content. It separates end-to-end and pipeline-stage latency, records AI calls and token usage, estimates cost from a dated pricing configuration, and keeps operational failures visible. The report remains separate from the reviewer workspace so product findings and performance evidence do not compete for attention.
-
-Both models produced the expected 3-risk/1-no-risk classification without operational failures on the same controlled workload. Opus averaged 13.16 seconds compared with 21.28 seconds for Sonnet and returned more concise responses, while Sonnet's estimated cost was approximately half; the full method, results, and model-selection rationale are documented in the [Controlled Demo Evaluation](docs/demo-evaluation.md).
+Four recorded runs compared Opus and Sonnet on the same controlled workload. Both produced the expected 3-risk/1-no-risk classification without operational failures. Opus averaged **13.16 seconds**, compared with **21.28 seconds** for Sonnet, and returned more concise responses; Sonnet's estimated cost was approximately half.
 
 <p align="center">
   <img src="docs/assets/analysis-performance-report.png" alt="Analysis Performance Report comparing 4 recorded runs by stage latency, AI usage, failures, and estimated cost">
 </p>
 
-<p align="center"><em>4 recorded runs compare pipeline timing, AI usage, failures, and estimated cost for the same controlled workload.</em></p>
+<p align="center"><em>The local report separates pipeline timing, AI usage, failures, and estimated cost.</em></p>
+
+These are observations from a small controlled workload, not general performance guarantees. The [evaluation](docs/demo-evaluation.md#operational-performance) records the method, cost assumptions, and model-selection rationale.
 
 ## AI assessment safeguards
 
-**Prompt integrity.** The system prompt explicitly treats retrieved source code, comments, strings, diffs, pull-request metadata and warnings as untrusted evidence rather than instructions. Repository-provided text is kept in the user message and is not interpolated into the trusted system instructions.
+- **Prompt integrity.** Repository-provided content is treated as untrusted evidence and kept separate from trusted system instructions.
+- **Grounded evidence.** The model selects from a closed set of evidence IDs; the application validates their PR ownership and resolves them to the original code locations.
+- **Visible uncertainty and failures.** Critical missing context prevents assessment, and failed assessments remain visible per pair while other completed results remain available.
 
-**Grounded evidence.** The model must select relevant code from a closed set of evidence IDs created from deterministic source locations; it cannot supply authoritative file paths or line numbers freely. The application maps the selected IDs back to the original evidence, validates their pull-request ownership, and requires conditional language for conclusions that remain semantic inference.
-
-**Visible uncertainty and failures.** Critical missing context prevents the provider call instead of producing a no-risk result. If one AI-provider assessment fails or returns invalid output, the failure remains attached to that Candidate Pair as an explicit assessment-not-run outcome; other completed findings remain available.
-
-These controls reduce prompt-injection, hallucination and provider-failure risk; they do not guarantee that an AI assessment is correct.
+Assessments remain advisory and require human review. These controls reduce risk without guaranteeing correctness; the prompt requires conditional language for semantic inferences. See [AI Risk Analysis](docs/design/06-ai-risk-analysis.md#prompt-integrity-and-evidence-grounding) for the detailed controls.
 
 ## Current MVP implementation
 
@@ -124,14 +127,10 @@ The complete implemented `v0.1.0` release boundary is defined in the [MVP Specif
 
 Key technologies:
 
-- [Angular](https://angular.dev/) for the reviewer-facing application;
-- [Node.js](https://nodejs.org/) and [TypeScript](https://www.typescriptlang.org/) for the backend and analysis pipeline;
-- the [GitHub REST API](https://docs.github.com/en/rest) for pull-request, review, diff, and selected-file retrieval;
-- [Tree-sitter](https://tree-sitter.github.io/tree-sitter/), a local parsing library that builds syntax trees, to recognize declarations, calls, and references in changed TypeScript `.ts` files without using AI;
-- the [Claude API](https://platform.claude.com/docs/en/api/messages) for risk assessment, accessed from the TypeScript backend through Anthropic's official [TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript);
-- [Zod](https://zod.dev/) for runtime validation at external data boundaries;
-- [Vitest](https://vitest.dev/) and [ESLint](https://eslint.org/) for automated verification;
-- [GitHub Actions](https://docs.github.com/en/actions) for clean CI verification.
+- **Application:** [Angular](https://angular.dev/) frontend; [Node.js](https://nodejs.org/) and [TypeScript](https://www.typescriptlang.org/) backend.
+- **Analysis:** [GitHub REST API](https://docs.github.com/en/rest); [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) for structural analysis of supported TypeScript files.
+- **AI and validation:** [Claude API](https://platform.claude.com/docs/en/api/messages) through the official [TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript); [Zod](https://zod.dev/) at external data boundaries.
+- **Quality:** [Vitest](https://vitest.dev/), [ESLint](https://eslint.org/), and [GitHub Actions](https://docs.github.com/en/actions).
 
 ## Run locally
 
@@ -152,9 +151,9 @@ npm test
 npm run lint
 ```
 
-### Explore the reviewer interface without credentials
+### Explore the UI without credentials
 
-Run the development-only visual fixture from the repository root:
+After installing dependencies with `npm ci`, run the development-only UI preview from the repository root:
 
 ```text
 npm run demo
